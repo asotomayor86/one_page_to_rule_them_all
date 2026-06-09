@@ -140,6 +140,33 @@ export async function alternarAdmin(formData: FormData): Promise<void> {
   revalidatePath("/admin/usuarios");
 }
 
+// --- Eliminar usuario --------------------------------------------------------
+
+/**
+ * Elimina una cuenta: la borra de Neon Auth (Admin plugin) y su fila en
+ * `profiles`. Por las FK en cascada, también desaparecen sus permisos
+ * (user_games) y sus participaciones en partidas (match_participants).
+ * No permite que un admin se borre a sí mismo.
+ */
+export async function eliminarUsuario(formData: FormData): Promise<void> {
+  const { user } = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId || userId === user.id) return; // nunca borrarse a uno mismo
+
+  // Borra la cuenta de autenticación (mejor esfuerzo).
+  try {
+    await getAuth().admin.removeUser({ userId });
+  } catch (e) {
+    console.error("eliminarUsuario removeUser error:", e);
+  }
+
+  // Borra el perfil (cascada → user_games y match_participants).
+  await db.delete(profiles).where(eq(profiles.id, userId));
+
+  revalidatePath("/admin/usuarios");
+  revalidatePath("/estadisticas");
+}
+
 // --- Conceder / revocar acceso a un juego -----------------------------------
 
 export async function alternarPermiso(formData: FormData): Promise<void> {

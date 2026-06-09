@@ -1,15 +1,18 @@
 import { alternarAdmin, alternarPermiso } from "@/actions/admin";
+import { getCurrentUser } from "@/auth/helpers";
 import { listarUsuarios } from "@/db/queries/admin";
 import { getAllGames } from "@/db/queries/games";
 import { InviteForm } from "@/components/invite-form";
+import { DeleteUserButton } from "@/components/delete-user-button";
 import { Card, SeccionTitulo } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function UsuariosPage() {
-  const [usuarios, juegos] = await Promise.all([
+  const [usuarios, juegos, actual] = await Promise.all([
     listarUsuarios(),
     getAllGames(),
+    getCurrentUser(),
   ]);
 
   return (
@@ -44,29 +47,35 @@ export default async function UsuariosPage() {
                   {u.email}
                 </div>
               </div>
-              <form action={alternarAdmin}>
-                <input type="hidden" name="userId" value={u.id} />
-                <input
-                  type="hidden"
-                  name="hacerAdmin"
-                  value={(!u.isAdmin).toString()}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    fontSize: "0.8rem",
-                    padding: "0.3rem 0.6rem",
-                    borderRadius: 999,
-                    cursor: "pointer",
-                    border: "1px solid var(--borde)",
-                    background: u.isAdmin ? "var(--oro)" : "transparent",
-                    color: u.isAdmin ? "#1a1300" : "var(--texto-suave)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {u.isAdmin ? "★ Admin" : "Hacer admin"}
-                </button>
-              </form>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                <form action={alternarAdmin}>
+                  <input type="hidden" name="userId" value={u.id} />
+                  <input
+                    type="hidden"
+                    name="hacerAdmin"
+                    value={(!u.isAdmin).toString()}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      fontSize: "0.8rem",
+                      padding: "0.3rem 0.6rem",
+                      borderRadius: 999,
+                      cursor: "pointer",
+                      border: "1px solid var(--borde)",
+                      background: u.isAdmin ? "var(--oro)" : "transparent",
+                      color: u.isAdmin ? "#1a1300" : "var(--texto-suave)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {u.isAdmin ? "★ Admin" : "Hacer admin"}
+                  </button>
+                </form>
+                {/* No se puede eliminar la propia cuenta. */}
+                {actual?.id !== u.id && (
+                  <DeleteUserButton userId={u.id} nombre={u.name} />
+                )}
+              </div>
             </div>
 
             {/* Permisos por juego */}
