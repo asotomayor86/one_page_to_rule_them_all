@@ -87,10 +87,28 @@ export async function invitarUsuario(
     return { ok: false, mensaje: `No se pudo invitar: ${detalle}` };
   }
 
+  // Envía automáticamente el email para que la persona cree su contraseña
+  // (enlace al /restablecer). Si fallara el correo, la invitación ya está hecha
+  // y la persona puede usar igualmente «He olvidado mi contraseña».
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  let correoEnviado = true;
+  try {
+    const { error } = await getAuth().requestPasswordReset({
+      email,
+      redirectTo: `${appUrl}/restablecer`,
+    });
+    if (error) correoEnviado = false;
+  } catch (e) {
+    console.error("invitarUsuario requestPasswordReset error:", e);
+    correoEnviado = false;
+  }
+
   revalidatePath("/admin/usuarios");
   return {
     ok: true,
-    mensaje: `Invitado ${displayName}. Dile que entre y use «He olvidado mi contraseña» con ${email} para crear su contraseña.`,
+    mensaje: correoEnviado
+      ? `Invitado ${displayName}. Le hemos enviado un email a ${email} para que cree su contraseña.`
+      : `Invitado ${displayName}, pero no se pudo enviar el email. Dile que entre y use «He olvidado mi contraseña» con ${email}.`,
   };
 }
 
