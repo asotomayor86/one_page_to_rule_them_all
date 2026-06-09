@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* Estilos de los componentes de UI de Neon Auth (login, reset, etc.). */
+@import "@neondatabase/auth/ui/tailwind";
+
+/* ---- Tema base del hub, mobile-first --------------------------------------- */
+:root {
+  --fondo: #0f1117;
+  --superficie: #181b23;
+  --superficie-2: #20242e;
+  --borde: #2c313d;
+  --texto: #f5f6fa;
+  --texto-suave: #9aa3b2;
+  --acento: #6d8cff;
+  --acento-fuerte: #4f6ef7;
+  --oro: #f5c451;
+  --verde: #46c98b;
+  --rojo: #ef5a6f;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Contenedor central, pensado para móvil. */
+.contenedor {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}

@@ -1,0 +1,207 @@
+# Integración de juegos externos con el Hub
+
+Esta guía explica cómo un juego desplegado por separado (en Vercel u otro sitio)
+se conecta al hub para: **(1)** saber qué jugador es, **(2)** comprobar que tiene
+acceso al juego y **(3)** escribir el resultado de una partida.
+
+El hub usa **Neon Auth** (sesión/JWT) y la **Data API de Neon** (PostgREST sobre
+HTTPS) sobre la misma base de datos Postgres. Las tablas relevantes viven en el
+esquema `public`: `profiles`, `games`, `user_games`, `matches`, `match_participants`.
+
+---
+
+## 1. Variables de entorno del juego
+
+```bash
+# Misma base de datos / proyecto Neon que el hub
+NEON_AUTH_BASE_URL=https://tu-proyecto.neon.tech         # servidor de Neon Auth
+NEON_AUTH_JWKS_URL=https://tu-proyecto.neon.tech/.well-known/jwks.json
+NEON_DATA_API_URL=https://app-xxxx.dataapi.neon.tech/rest/v1
+
+# Solo en el BACKEND del juego, para escribir resultados de forma fiable:
+GAME_SERVICE_DATABASE_URL=postgresql://...               # conexión privilegiada (no exponer)
+```
+
+> El `JWKS_URL` y la URL base de Neon Auth los encuentras en la configuración de
+> Neon Auth del proyecto. La Data API se habilita en el proyecto Neon.
+
+---
+
+## 2. Identificar al jugador (validar la sesión / JWT)
+
+El navegador del jugador ya tiene sesión de Neon Auth (cookies del hub si
+compartís dominio/subdominio, o un token que el hub le pasa). En el cliente puedes
+obtener el JWT con el SDK de Neon Auth:
+
+```ts
+import { createAuthClient } from "@neondatabase/auth/next";
+const authClient = createAuthClient();
+const token = await authClient.getJWTToken(); // JWT para la Data API
+```
+
+En el **servidor del juego**, valida ese JWT contra el JWKS de Neon Auth y lee el
+`sub` (que es el id de usuario, el mismo que `profiles.id`):
+
+```ts
+import { createRemoteJWKSet, jwtVerify } from "jose";
+
+const JWKS = createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!));
+
+export async function getUserIdFromToken(token: string): Promise<string> {
+  const { payload } = await jwtVerify(token, JWKS);
+  if (!payload.sub) throw new Error("Token sin 'sub'");
+  return payload.sub; // == profiles.id
+}
+```
+
+---
+
+## 3. Comprobar que el jugador tiene acceso al juego
+
+Con el JWT del jugador, la **Data API** aplica RLS automáticamente: `user_games`
+solo devuelve **sus** filas. Para comprobar el acceso a un juego por `slug`:
+
+```ts
+async function tieneAcceso(token: string, slug: string): Promise<boolean> {
+  const url = new URL(`${process.env.NEON_DATA_API_URL}/user_games`);
+  // PostgREST: embebemos games y filtramos por su slug
+  url.searchParams.set("select", "game_id,games!inner(slug)");
+  url.searchParams.set("games.slug", `eq.${slug}`);
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const filas = (await res.json()) as unknown[];
+  return filas.length > 0; // RLS garantiza que solo son las del propio usuario
+}
+```
+
+---
+
+## 4. Escribir el resultado de una partida (el contrato)
+
+Una partida = **1 fila en `matches`** (cabecera) + **N filas en
+`match_participants`** (una por jugador).
+
+### Modelo de permisos (importante)
+
+Por seguridad, las **escrituras** en `matches` / `match_participants` están
+restringidas por RLS a administradores. Para que un jugador no pueda falsear
+resultados, **el resultado lo escribe el BACKEND del juego**, no el navegador:
+
+- **Recomendado:** el servidor del juego escribe con `GAME_SERVICE_DATABASE_URL`
+  (conexión privilegiada que salta RLS), o con un rol de servicio dedicado.
+- **Opcional (confianza):** si os fiais entre familia, podéis añadir una política
+  RLS que permita a un autenticado insertar partidas de juegos a los que tiene
+  acceso (ver el final de este documento) y escribir desde el cliente con su JWT.
+
+### 4a. Vía Data API (PostgREST)
+
+Con un token con privilegios de escritura (servicio admin), o tras aplicar la
+política opcional, con el JWT del jugador:
+
+**Paso 1 — crear la cabecera y recuperar su `id`:**
+
+```http
+POST {NEON_DATA_API_URL}/matches
+Authorization: Bearer <token>
+Content-Type: application/json
+Prefer: return=representation
+
+{ "game_id": "11111111-1111-1111-1111-111111111111", "kind": "ranked", "notes": "Partida del domingo" }
+```
+
+Respuesta (gracias a `Prefer: return=representation`):
+
+```json
+[{ "id": "aaaa1111-...", "game_id": "1111...", "kind": "ranked", "played_at": "2026-06-09T18:00:00Z", "notes": "Partida del domingo" }]
+```
+
+**Paso 2 — insertar los participantes (array en una sola llamada):**
+
+```http
+POST {NEON_DATA_API_URL}/match_participants
+Authorization: Bearer <token>
+Content-Type: application/json
+
+[
+  { "match_id": "aaaa1111-...", "user_id": "user_abc", "result": "win",  "score": 21, "position": 1 },
+  { "match_id": "aaaa1111-...", "user_id": "user_def", "result": "loss", "score": 14, "position": 2 }
+]
+```
+
+Notas del contrato:
+- `kind`: `"ranked"` (cuenta para el ranking) o `"practice"`.
+- `result`: `"win" | "loss" | "draw"`.
+- `score` y `position` son opcionales (`null` si no aplica).
+- `user_id` es el `sub` del JWT de cada jugador (= `profiles.id`).
+- Si el paso 2 falla, borra la cabecera creada en el paso 1 para no dejar
+  partidas vacías.
+
+### 4b. Vía SQL directo (backend del juego)
+
+```sql
+WITH nueva AS (
+  INSERT INTO matches (game_id, kind, notes)
+  VALUES ($1, 'ranked', $2)
+  RETURNING id
+)
+INSERT INTO match_participants (match_id, user_id, result, score, position)
+SELECT nueva.id, x.user_id, x.result, x.score, x.position
+FROM nueva, jsonb_to_recordset($3::jsonb)
+  AS x(user_id text, result text, score int, position int);
+```
+
+Donde `$3` es un JSON como:
+```json
+[{"user_id":"user_abc","result":"win","score":21,"position":1},
+ {"user_id":"user_def","result":"loss","score":14,"position":2}]
+```
+
+---
+
+## 5. (Opcional) Permitir escritura desde el cliente con el JWT del jugador
+
+Si preferís que cada juego escriba con el JWT del jugador (modelo de confianza,
+sin backend), añadid esta política RLS. Permite insertar partidas **solo** de
+juegos a los que el usuario tiene acceso:
+
+```sql
+-- Insertar cabeceras de partidas de juegos a los que el usuario tiene acceso
+CREATE POLICY "jugador-inserta-match" ON matches
+  AS PERMISSIVE FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM user_games ug
+      WHERE ug.game_id = matches.game_id
+        AND ug.user_id = (select auth.user_id())
+    )
+  );
+
+-- Insertar participantes de partidas que el usuario acaba de crear
+CREATE POLICY "jugador-inserta-participantes" ON match_participants
+  AS PERMISSIVE FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM matches m
+      JOIN user_games ug ON ug.game_id = m.game_id
+      WHERE m.id = match_participants.match_id
+        AND ug.user_id = (select auth.user_id())
+    )
+  );
+```
+
+> Ten en cuenta el riesgo: con esta política un jugador podría registrar
+> resultados manualmente. Para una familia suele ser aceptable; si no, usa el
+> modelo de backend del apartado 4.
+
+---
+
+## Resumen
+
+| Necesidad | Cómo |
+|---|---|
+| ¿Quién es el jugador? | Validar el JWT de Neon Auth (JWKS) → `sub` = `profiles.id`. |
+| ¿Tiene acceso al juego? | `GET /user_games` por Data API con su JWT (RLS filtra). |
+| Guardar resultado | `POST /matches` + `POST /match_participants` (con privilegio de escritura). |
+| Separar práctica de oficial | Campo `kind` (`practice` / `ranked`). |
