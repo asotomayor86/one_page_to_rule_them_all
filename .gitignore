@@ -27,3 +27,5 @@ yarn-error.log*
 .idea/
 
 # drizzle (las migraciones SÍ se versionan; meta no es secreto)
+
+.vercel

@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/auth/server";
+import { getAuth } from "@/auth/server";
 import { requireAdmin } from "@/auth/helpers";
 import {
   db,
@@ -56,7 +56,7 @@ export async function invitarUsuario(
   }
   const { email, displayName, nickname } = parsed.data;
 
-  const { data, error } = await auth.admin.createUser({
+  const { data, error } = await getAuth().admin.createUser({
     email,
     name: displayName,
     password: passwordTemporal(),
@@ -106,7 +106,7 @@ export async function alternarAdmin(formData: FormData): Promise<void> {
 
   // Sincroniza el rol en Neon Auth (no rompemos si falla).
   try {
-    await auth.admin.setRole({ userId, role: hacerAdmin ? "admin" : "user" });
+    await getAuth().admin.setRole({ userId, role: hacerAdmin ? "admin" : "user" });
   } catch {
     // El rol de la app (profiles.is_admin) ya quedó actualizado.
   }

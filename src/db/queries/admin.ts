@@ -1,6 +1,6 @@
 import "server-only";
 import { asc } from "drizzle-orm";
-import { auth } from "@/auth/server";
+import { getAuth } from "@/auth/server";
 import { db, profiles, userGames } from "@/db";
 
 export type UsuarioAdmin = {
@@ -17,7 +17,7 @@ export type UsuarioAdmin = {
  * email) con nuestra tabla `profiles` (nombre, apodo, admin) y sus permisos.
  */
 export async function listarUsuarios(): Promise<UsuarioAdmin[]> {
-  const { data } = await auth.admin.listUsers({ query: { limit: 500 } });
+  const { data } = await getAuth().admin.listUsers({ query: { limit: 500 } });
   const authUsers = (data?.users ?? []) as Array<{
     id: string;
     email: string;

@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { auth } from "@/auth/server";
+import { getAuth } from "@/auth/server";
 import { db, profiles, type Profile } from "@/db";
 
 /** Usuario tal como lo devuelve Neon Auth (subconjunto que usamos). */
@@ -18,7 +18,7 @@ export type AuthUser = {
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    const { data } = await auth.getSession();
+    const { data } = await getAuth().getSession();
     const user = data?.user as AuthUser | undefined;
     return user ?? null;
   } catch {
