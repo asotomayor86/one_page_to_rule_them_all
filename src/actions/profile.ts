@@ -1,10 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, profiles } from "@/db";
-import { requireUser } from "@/auth/helpers";
+import { getCurrentUser } from "@/auth/helpers";
 
 const esquema = z.object({
   displayName: z
@@ -27,24 +26,46 @@ export async function actualizarPerfil(
   _prev: ResultadoAccion,
   formData: FormData,
 ): Promise<ResultadoAccion> {
-  const { user } = await requireUser();
+  // Lee la sesión sin redirigir (en una Server Action redirigir se percibe como
+  // "fallo"); si no hay sesión, lo decimos claramente.
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      ok: false,
+      mensaje: "Tu sesión ha caducado. Recarga la página e inténtalo de nuevo.",
+    };
+  }
 
   const parsed = esquema.safeParse({
     displayName: formData.get("displayName"),
     nickname: formData.get("nickname"),
   });
-
   if (!parsed.success) {
     return { ok: false, mensaje: parsed.error.issues[0]?.message };
   }
 
-  await db
-    .update(profiles)
-    .set({
-      displayName: parsed.data.displayName,
-      nickname: parsed.data.nickname,
-    })
-    .where(eq(profiles.id, user.id));
+  try {
+    // Upsert: funciona aunque (por lo que sea) aún no exista la fila de perfil.
+    await db
+      .insert(profiles)
+      .values({
+        id: user.id,
+        displayName: parsed.data.displayName,
+        nickname: parsed.data.nickname,
+      })
+      .onConflictDoUpdate({
+        target: profiles.id,
+        set: {
+          displayName: parsed.data.displayName,
+          nickname: parsed.data.nickname,
+        },
+      });
+  } catch (e) {
+    console.error("actualizarPerfil error:", e);
+    // Mensaje con detalle temporal para diagnosticar en producción.
+    const detalle = e instanceof Error ? e.message : "error desconocido";
+    return { ok: false, mensaje: `No se pudo guardar: ${detalle}` };
+  }
 
   revalidatePath("/perfil");
   revalidatePath("/estadisticas");
