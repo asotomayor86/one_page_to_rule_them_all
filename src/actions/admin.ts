@@ -56,28 +56,36 @@ export async function invitarUsuario(
   }
   const { email, displayName, nickname } = parsed.data;
 
-  const { data, error } = await getAuth().admin.createUser({
-    email,
-    name: displayName,
-    password: passwordTemporal(),
-    role: "user",
-  });
-
-  if (error || !data?.user?.id) {
-    return {
-      ok: false,
-      mensaje: error?.message ?? "No se pudo crear la cuenta",
-    };
-  }
-
-  // Crea/asegura el perfil con nombre y apodo.
-  await db
-    .insert(profiles)
-    .values({ id: data.user.id, displayName, nickname })
-    .onConflictDoUpdate({
-      target: profiles.id,
-      set: { displayName, nickname },
+  let nuevoId: string;
+  try {
+    const { data, error } = await getAuth().admin.createUser({
+      email,
+      name: displayName,
+      password: passwordTemporal(),
+      role: "user",
     });
+
+    if (error || !data?.user?.id) {
+      return {
+        ok: false,
+        mensaje: error?.message ?? "No se pudo crear la cuenta",
+      };
+    }
+    nuevoId = data.user.id;
+
+    // Crea/asegura el perfil con nombre y apodo.
+    await db
+      .insert(profiles)
+      .values({ id: nuevoId, displayName, nickname })
+      .onConflictDoUpdate({
+        target: profiles.id,
+        set: { displayName, nickname },
+      });
+  } catch (e) {
+    console.error("invitarUsuario error:", e);
+    const detalle = e instanceof Error ? e.message : "error desconocido";
+    return { ok: false, mensaje: `No se pudo invitar: ${detalle}` };
+  }
 
   revalidatePath("/admin/usuarios");
   return {
