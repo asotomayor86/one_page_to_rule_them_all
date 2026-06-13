@@ -102,6 +102,23 @@ export function CreateLeagueForm({
             <option value={4}>4 vueltas</option>
           </select>
         </label>
+        <label
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            flex: "0 1 150px",
+          }}
+        >
+          <span style={{ fontSize: "0.9rem" }}>Victorias por partido</span>
+          <select name="victorias" defaultValue={1} style={estiloCampo}>
+            <option value={1}>A 1 victoria</option>
+            <option value={2}>A 2 victorias</option>
+            <option value={3}>A 3 victorias</option>
+            <option value={4}>A 4 victorias</option>
+            <option value={5}>A 5 victorias</option>
+          </select>
+        </label>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

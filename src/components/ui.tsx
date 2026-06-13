@@ -26,9 +26,9 @@ export function Card({
     <div
       className="glass"
       style={{
-        borderRadius: 16,
-        padding: "1rem",
-        boxShadow: "0 8px 30px rgba(0, 0, 0, 0.35)",
+        borderRadius: 14,
+        padding: "0.7rem 0.9rem",
+        boxShadow: "0 6px 22px rgba(0, 0, 0, 0.3)",
         ...style,
       }}
     >
@@ -51,10 +51,10 @@ export function SeccionTitulo({
         alignItems: "center",
         justifyContent: "space-between",
         gap: "0.5rem",
-        margin: "1.5rem 0 0.75rem",
+        margin: "1rem 0 0.5rem",
       }}
     >
-      <h2 className="seccion-titulo" style={{ margin: 0, fontSize: "1.2rem" }}>
+      <h2 className="seccion-titulo" style={{ margin: 0, fontSize: "1.1rem" }}>
         {children}
       </h2>
       {extra}

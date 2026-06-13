@@ -17,6 +17,11 @@ const secciones = [
     titulo: "🏆 Registrar partidas",
     desc: "Anotar resultados de partidas mientras los juegos no escriben solos.",
   },
+  {
+    href: "/admin/salas",
+    titulo: "🚪 Salas y ligas",
+    desc: "Cerrar salas abiertas y cerrar o eliminar ligas.",
+  },
 ];
 
 export default function AdminPage() {

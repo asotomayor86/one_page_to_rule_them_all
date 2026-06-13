@@ -5,6 +5,7 @@ import { listarPerfiles } from "@/db/queries/admin";
 import { CreateLeagueForm } from "@/components/create-league-form";
 import { RoomCard } from "@/components/room-card";
 import { ClasificacionTable } from "@/components/clasificacion-table";
+import { LeagueSection } from "@/components/league-section";
 import { Card, SeccionTitulo } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -57,27 +58,17 @@ export default async function LigasPage() {
         </Card>
       ) : (
         ligas.map((liga) => (
-          <section key={liga.id}>
-            <SeccionTitulo
-              extra={
-                <span style={{ fontSize: "0.8rem", color: "var(--texto-suave)" }}>
-                  {(liga.game.icon || "🎮") + " " + liga.game.name} ·{" "}
-                  {liga.rounds} vuelta{liga.rounds > 1 ? "s" : ""} ·{" "}
-                  {liga.salas.length} partidos
-                </span>
-              }
-            >
-              🏆 {liga.name}
-            </SeccionTitulo>
-
-            {/* Clasificación de la liga */}
+          <LeagueSection
+            key={liga.id}
+            name={liga.name}
+            subtitle={`${liga.game.icon || "🎮"} ${liga.game.name} · ${liga.rounds} vuelta${liga.rounds > 1 ? "s" : ""} · ${liga.salas.length} partidos`}
+          >
             <ClasificacionTable filas={liga.clasificacion} />
-
             <h3
               className="seccion-titulo"
               style={{
-                margin: "1rem 0 0.6rem",
-                fontSize: "0.95rem",
+                margin: "0.4rem 0 0",
+                fontSize: "0.9rem",
                 color: "var(--texto-suave)",
               }}
             >
@@ -93,8 +84,8 @@ export default async function LigasPage() {
               <div
                 style={{
                   display: "grid",
-                  gap: "0.7rem",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                  gap: "0.6rem",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
                 }}
               >
                 {liga.salas.map((s) => (
@@ -107,7 +98,7 @@ export default async function LigasPage() {
                 ))}
               </div>
             )}
-          </section>
+          </LeagueSection>
         ))
       )}
     </>

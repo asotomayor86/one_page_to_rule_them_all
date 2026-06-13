@@ -43,6 +43,13 @@
       "when": 1781389827416,
       "tag": "0005_match_room",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781391948082,
+      "tag": "0006_league_wins",
+      "breakpoints": true
     }
   ]
 }

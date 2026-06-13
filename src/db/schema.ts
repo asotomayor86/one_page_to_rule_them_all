@@ -194,6 +194,9 @@ export const leagues = pgTable("leagues", {
     .notNull()
     .references(() => games.id, { onDelete: "cascade" }),
   rounds: integer("rounds").notNull().default(1),
+  // Cada partido se juega "al mejor de": primero en llegar a `wins_needed`
+  // victorias gana. 1 = una sola partida.
+  winsNeeded: integer("wins_needed").notNull().default(1),
   createdBy: text("created_by")
     .notNull()
     .references(() => profiles.id, { onDelete: "cascade" }),

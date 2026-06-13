@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import {
   db,
   games,
@@ -288,6 +288,86 @@ export async function getLeaguesForUser(userId: string): Promise<Liga[]> {
     salas: salasPorLiga.get(l.id) ?? [],
     clasificacion: ordenarClasif(clasifPorLiga.get(l.id)),
   }));
+}
+
+export type LigaAdmin = {
+  id: string;
+  name: string;
+  gameName: string;
+  gameIcon: string | null;
+  totalSalas: number;
+  abiertas: number;
+  createdAt: Date;
+};
+
+/** Todas las ligas (panel admin), con recuento de salas abiertas/cerradas. */
+export async function getAllLeaguesAdmin(): Promise<LigaAdmin[]> {
+  const filas = await db
+    .select({
+      id: leagues.id,
+      name: leagues.name,
+      createdAt: leagues.createdAt,
+      gameName: games.name,
+      gameIcon: games.icon,
+    })
+    .from(leagues)
+    .innerJoin(games, eq(games.id, leagues.gameId))
+    .orderBy(desc(leagues.createdAt));
+
+  if (filas.length === 0) return [];
+
+  const salasLiga = await db
+    .select({ leagueId: rooms.leagueId, status: rooms.status })
+    .from(rooms)
+    .where(
+      inArray(
+        rooms.leagueId,
+        filas.map((f) => f.id),
+      ),
+    );
+
+  const conteo = new Map<string, { total: number; abiertas: number }>();
+  for (const s of salasLiga) {
+    if (!s.leagueId) continue;
+    const c = conteo.get(s.leagueId) ?? { total: 0, abiertas: 0 };
+    c.total++;
+    if (s.status === "open") c.abiertas++;
+    conteo.set(s.leagueId, c);
+  }
+
+  return filas.map((f) => ({
+    id: f.id,
+    name: f.name,
+    gameName: f.gameName,
+    gameIcon: f.gameIcon,
+    totalSalas: conteo.get(f.id)?.total ?? 0,
+    abiertas: conteo.get(f.id)?.abiertas ?? 0,
+    createdAt: f.createdAt,
+  }));
+}
+
+/** Todas las salas INDEPENDIENTES (sin liga) abiertas (panel admin). */
+export async function getAllIndependentRoomsAdmin(): Promise<Sala[]> {
+  const filas = await db
+    .select(seleccionSala)
+    .from(rooms)
+    .innerJoin(games, eq(games.id, rooms.gameId))
+    .where(and(eq(rooms.status, "open"), isNull(rooms.leagueId)))
+    .orderBy(desc(rooms.createdAt));
+  return montarSalas(filas);
+}
+
+/** Victorias necesarias por partido de una liga (1 si no es liga). */
+export async function getLeagueWinsNeeded(
+  leagueId: string | null,
+): Promise<number> {
+  if (!leagueId) return 1;
+  const [l] = await db
+    .select({ winsNeeded: leagues.winsNeeded })
+    .from(leagues)
+    .where(eq(leagues.id, leagueId))
+    .limit(1);
+  return l?.winsNeeded ?? 1;
 }
 
 /** ¿Tiene el usuario acceso (user_games) a ese juego? */

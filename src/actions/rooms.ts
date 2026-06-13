@@ -12,7 +12,7 @@ import {
   roomPlayers,
   rooms,
 } from "@/db";
-import { getCurrentUser } from "@/auth/helpers";
+import { getCurrentUser, requireAdmin } from "@/auth/helpers";
 import { tieneAccesoAlJuego } from "@/db/queries/rooms";
 
 export type ResultadoSala = { ok: boolean; mensaje?: string; code?: string };
@@ -136,6 +136,11 @@ const esquemaLiga = z.object({
     .int()
     .min(1, "Mínimo 1 vuelta")
     .max(4, "Máximo 4 vueltas"),
+  victorias: z.coerce
+    .number()
+    .int()
+    .min(1, "Mínimo 1 victoria")
+    .max(9, "Máximo 9 victorias"),
   jugadores: z
     .array(z.string().min(1))
     .min(2, "Una liga necesita al menos 2 jugadores"),
@@ -165,12 +170,13 @@ export async function crearLiga(
     gameId: formData.get("gameId"),
     nombre: formData.get("nombre"),
     vueltas: formData.get("vueltas"),
+    victorias: formData.get("victorias"),
     jugadores: jugadoresRaw,
   });
   if (!parsed.success) {
     return { ok: false, mensaje: parsed.error.issues[0]?.message };
   }
-  const { gameId, nombre, vueltas } = parsed.data;
+  const { gameId, nombre, vueltas, victorias } = parsed.data;
   const jugadores = [...new Set(parsed.data.jugadores)];
   if (jugadores.length < 2) {
     return { ok: false, mensaje: "Una liga necesita al menos 2 jugadores." };
@@ -203,7 +209,13 @@ export async function crearLiga(
   try {
     const [liga] = await db
       .insert(leagues)
-      .values({ name: nombre, gameId, rounds: vueltas, createdBy: user.id })
+      .values({
+        name: nombre,
+        gameId,
+        rounds: vueltas,
+        winsNeeded: victorias,
+        createdBy: user.id,
+      })
       .returning({ id: leagues.id });
 
     await db
@@ -259,4 +271,54 @@ export async function cerrarSala(formData: FormData): Promise<void> {
     .where(and(eq(rooms.id, roomId), eq(rooms.createdBy, user.id)));
 
   revalidatePath("/salas");
+}
+
+// --- Acciones de administración ---------------------------------------------
+
+/** Cierra cualquier sala (admin), sea de quien sea. */
+export async function cerrarSalaAdmin(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const roomId = String(formData.get("roomId") ?? "");
+  if (!roomId) return;
+
+  await db.update(rooms).set({ status: "closed" }).where(eq(rooms.id, roomId));
+
+  revalidatePath("/admin/salas");
+  revalidatePath("/salas");
+  revalidatePath("/ligas");
+}
+
+/**
+ * Cierra una liga entera (admin): marca como cerradas todas sus salas. La liga y
+ * su clasificación se conservan (historial), pero ya no se puede jugar.
+ */
+export async function cerrarLigaAdmin(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const leagueId = String(formData.get("leagueId") ?? "");
+  if (!leagueId) return;
+
+  await db
+    .update(rooms)
+    .set({ status: "closed" })
+    .where(eq(rooms.leagueId, leagueId));
+
+  revalidatePath("/admin/salas");
+  revalidatePath("/ligas");
+}
+
+/**
+ * Elimina una liga (admin) y todas sus salas/partidos. Los resultados ya
+ * registrados en `matches` quedan con room_id = null (no cuentan en clasificación).
+ */
+export async function eliminarLigaAdmin(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const leagueId = String(formData.get("leagueId") ?? "");
+  if (!leagueId) return;
+
+  // El borrado en cascada del esquema elimina league_players, sus rooms y
+  // room_players; matches.room_id se pone a null (on delete set null).
+  await db.delete(leagues).where(eq(leagues.id, leagueId));
+
+  revalidatePath("/admin/salas");
+  revalidatePath("/ligas");
 }
