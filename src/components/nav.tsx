@@ -36,6 +36,8 @@ export function Nav({ displayName, isAdmin }: Props) {
       style={{
         borderBottom: "1px solid var(--borde)",
         background: "var(--superficie)",
+        WebkitBackdropFilter: "blur(14px) saturate(140%)",
+        backdropFilter: "blur(14px) saturate(140%)",
         position: "sticky",
         top: 0,
         zIndex: 10,

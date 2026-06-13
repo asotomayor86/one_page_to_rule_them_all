@@ -24,11 +24,11 @@ export function Card({
 }) {
   return (
     <div
+      className="glass"
       style={{
-        background: "var(--superficie)",
-        border: "1px solid var(--borde)",
-        borderRadius: 12,
+        borderRadius: 16,
         padding: "1rem",
+        boxShadow: "0 8px 30px rgba(0, 0, 0, 0.35)",
         ...style,
       }}
     >
@@ -54,7 +54,9 @@ export function SeccionTitulo({
         margin: "1.5rem 0 0.75rem",
       }}
     >
-      <h2 style={{ margin: 0, fontSize: "1.15rem" }}>{children}</h2>
+      <h2 className="seccion-titulo" style={{ margin: 0, fontSize: "1.2rem" }}>
+        {children}
+      </h2>
       {extra}
     </div>
   );

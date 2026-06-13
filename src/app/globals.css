@@ -3,16 +3,20 @@
 /* Estilos de los componentes de UI de Neon Auth (login, reset, etc.). */
 @import "@neondatabase/auth/ui/tailwind";
 
-/* ---- Tema base del hub, mobile-first --------------------------------------- */
+/* ============================================================================
+   Tema del hub inspirado en Assemble: imagen de fondo fija a pantalla completa
+   + paneles translúcidos ("glass") encima, tipografía condensada y acentos.
+   ========================================================================== */
 :root {
-  --fondo: #0f1117;
-  --superficie: #181b23;
-  --superficie-2: #20242e;
-  --borde: #2c313d;
-  --texto: #f5f6fa;
-  --texto-suave: #9aa3b2;
-  --acento: #6d8cff;
-  --acento-fuerte: #4f6ef7;
+  --fondo: #0e0a1c;
+  /* Paneles translúcidos (se ve el fondo a través) */
+  --superficie: rgba(24, 18, 42, 0.55);
+  --superficie-2: rgba(48, 38, 78, 0.55);
+  --borde: rgba(255, 255, 255, 0.10);
+  --texto: #f4f1fb;
+  --texto-suave: #b7aed0;
+  --acento: #9b8cff;
+  --acento-fuerte: #7b5cff;
   --oro: #f5c451;
   --verde: #46c98b;
   --rojo: #ef5a6f;
@@ -26,8 +30,33 @@ body {
   margin: 0;
   background: var(--fondo);
   color: var(--texto);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-barlow), "Barlow Semi Condensed", system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Fondo fijo a pantalla completa (como Assemble): degradado morado de base +
+   tu imagen /fondo.jpg encima (si existe) + un velo oscuro para legibilidad.
+   El orden de capas: la primera pinta encima. Si /fondo.jpg falta, se ven los
+   degradados de abajo (sin romper nada). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--fondo);
+  background-image: linear-gradient(
+      180deg,
+      rgba(10, 7, 22, 0.78),
+      rgba(10, 7, 22, 0.9)
+    ),
+    url("/fondo.jpg"),
+    radial-gradient(1100px 760px at 72% -12%, #4a2f8f 0%, transparent 58%),
+    radial-gradient(900px 700px at 10% 110%, #2a1c5c 0%, transparent 60%),
+    linear-gradient(155deg, #1b1336 0%, #100a22 55%, #0a0716 100%);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
 
 * {
@@ -39,10 +68,25 @@ a {
   text-decoration: none;
 }
 
-/* Contenedor central, pensado para móvil. */
+/* Contenedor central, mobile-first. */
 .contenedor {
   width: 100%;
-  max-width: 960px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: 1rem;
+}
+
+/* Panel "glass" reutilizable (lo usan Card y la barra de navegación). */
+.glass {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+/* Títulos de sección: condensados, en mayúsculas, con un poco de espaciado. */
+.seccion-titulo {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
 }
