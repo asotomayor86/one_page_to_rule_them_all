@@ -1,0 +1,187 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { crearSala, type ResultadoSala } from "@/actions/rooms";
+import { Aviso, estiloCampo } from "@/components/ui";
+
+type Juego = { id: string; name: string; icon: string | null; url: string };
+type Perfil = { id: string; nombre: string };
+
+const inicial: ResultadoSala = { ok: false };
+
+/** Formulario para crear una sala: elige juego + jugadores y devuelve el código. */
+export function CreateRoomForm({
+  juegos,
+  perfiles,
+  currentUserId,
+}: {
+  juegos: Juego[];
+  perfiles: Perfil[];
+  currentUserId: string;
+}) {
+  const [estado, accion, enviando] = useActionState(crearSala, inicial);
+  const [gameId, setGameId] = useState("");
+  // Por comodidad, el creador entra preseleccionado como jugador.
+  const [sel, setSel] = useState<Set<string>>(new Set([currentUserId]));
+
+  const juego = juegos.find((j) => j.id === gameId);
+  const jugadoresJSON = JSON.stringify([...sel]);
+
+  function toggle(id: string) {
+    setSel((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  function abrirJuego(code: string) {
+    if (!juego) return;
+    const sep = juego.url.includes("?") ? "&" : "?";
+    window.open(`${juego.url}${sep}sala=${code}`, "_blank", "noopener");
+  }
+
+  if (juegos.length === 0) {
+    return (
+      <p style={{ margin: 0, color: "var(--texto-suave)" }}>
+        No tienes ningún juego asignado todavía. Pide acceso a un administrador.
+      </p>
+    );
+  }
+
+  return (
+    <form
+      action={accion}
+      style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}
+    >
+      <input type="hidden" name="jugadores" value={jugadoresJSON} />
+
+      <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <span style={{ fontSize: "0.9rem" }}>Juego</span>
+        <select
+          name="gameId"
+          required
+          value={gameId}
+          onChange={(e) => setGameId(e.target.value)}
+          style={estiloCampo}
+        >
+          <option value="" disabled>
+            Elige un juego…
+          </option>
+          {juegos.map((j) => (
+            <option key={j.id} value={j.id}>
+              {(j.icon || "🎮") + " " + j.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span style={{ fontSize: "0.9rem" }}>
+          Jugadores{" "}
+          <span style={{ color: "var(--texto-suave)" }}>
+            ({sel.size} seleccionados)
+          </span>
+        </span>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.4rem",
+          }}
+        >
+          {perfiles.map((p) => {
+            const activo = sel.has(p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => toggle(p.id)}
+                style={{
+                  fontSize: "0.85rem",
+                  padding: "0.3rem 0.7rem",
+                  borderRadius: 999,
+                  cursor: "pointer",
+                  border: "1px solid var(--borde)",
+                  background: activo ? "var(--acento-fuerte)" : "transparent",
+                  color: activo ? "white" : "var(--texto-suave)",
+                }}
+              >
+                {activo ? "✓ " : ""}
+                {p.nombre}
+                {p.id === currentUserId ? " (tú)" : ""}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        disabled={enviando}
+        style={{
+          padding: "0.6rem",
+          borderRadius: 8,
+          border: "none",
+          background: "var(--acento-fuerte)",
+          color: "white",
+          fontWeight: 600,
+          cursor: enviando ? "wait" : "pointer",
+        }}
+      >
+        {enviando ? "Creando…" : "Crear sala"}
+      </button>
+
+      {estado.mensaje && !estado.ok && (
+        <Aviso tipo="error">{estado.mensaje}</Aviso>
+      )}
+
+      {estado.ok && estado.code && (
+        <div
+          style={{
+            border: "1px solid var(--verde)",
+            borderRadius: 10,
+            padding: "0.9rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.6rem",
+            alignItems: "center",
+          }}
+        >
+          <span style={{ color: "var(--texto-suave)", fontSize: "0.85rem" }}>
+            Código de la sala
+          </span>
+          <strong style={{ fontSize: "2rem", letterSpacing: "0.2em" }}>
+            {estado.code}
+          </strong>
+          <button
+            type="button"
+            onClick={() => abrirJuego(estado.code!)}
+            style={{
+              padding: "0.55rem 1rem",
+              borderRadius: 8,
+              border: "none",
+              background: "var(--verde)",
+              color: "#04231a",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Abrir el juego con este código →
+          </button>
+          <span
+            style={{
+              color: "var(--texto-suave)",
+              fontSize: "0.8rem",
+              textAlign: "center",
+            }}
+          >
+            Comparte el código con los jugadores: lo introducen en el juego para
+            ocupar su sitio.
+          </span>
+        </div>
+      )}
+    </form>
+  );
+}

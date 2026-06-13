@@ -1,29 +1,76 @@
 # Integración de juegos externos con el Hub
 
 Esta guía explica cómo un juego desplegado por separado (en Vercel u otro sitio)
-se conecta al hub para: **(1)** saber qué jugador es, **(2)** comprobar que tiene
-acceso al juego y **(3)** escribir el resultado de una partida.
+se conecta al hub para: **(1)** entrar por una **sala** creada en el hub, **(2)**
+saber qué jugador es, **(3)** comprobar acceso y **(4)** escribir el resultado.
 
 El hub usa **Neon Auth** (sesión/JWT) y la **Data API de Neon** (PostgREST sobre
 HTTPS) sobre la misma base de datos Postgres. Las tablas relevantes viven en el
-esquema `public`: `profiles`, `games`, `user_games`, `matches`, `match_participants`.
+esquema `public`: `profiles`, `games`, `user_games`, `rooms`, `room_players`,
+`matches`, `match_participants`.
+
+**Flujo general:** en el hub se crea una **sala** (juego + jugadores) y se obtiene
+un **código**. El hub abre el juego en `URL_DEL_JUEGO?sala=CÓDIGO`. El juego
+consulta la sala al hub por ese código, identifica al jugador con Neon Auth y solo
+sienta a quienes están en la lista de la sala. Al terminar, escribe el resultado.
 
 ---
 
 ## 1. Variables de entorno del juego
 
 ```bash
-# Misma base de datos / proyecto Neon que el hub
+HUB_URL=https://one-page-to-rule-them-all.vercel.app     # el hub (para /api/rooms)
 NEON_AUTH_BASE_URL=https://tu-proyecto.neon.tech         # servidor de Neon Auth
-NEON_AUTH_JWKS_URL=https://tu-proyecto.neon.tech/.well-known/jwks.json
-NEON_DATA_API_URL=https://app-xxxx.dataapi.neon.tech/rest/v1
+NEON_DATA_API_URL=https://app-xxxx.dataapi.neon.tech/rest/v1   # opcional (escritura por Data API)
 
 # Solo en el BACKEND del juego, para escribir resultados de forma fiable:
 GAME_SERVICE_DATABASE_URL=postgresql://...               # conexión privilegiada (no exponer)
 ```
 
-> El `JWKS_URL` y la URL base de Neon Auth los encuentras en la configuración de
-> Neon Auth del proyecto. La Data API se habilita en el proyecto Neon.
+---
+
+## 1.5. Entrar por una sala (el punto de entrada)
+
+El hub abre tu juego con el código en la URL:
+
+```
+https://tu-juego.vercel.app/?sala=ABC234
+```
+
+**Paso 1 — lee el código** del query param `sala`.
+
+**Paso 2 — pide la sala al hub** (el código actúa de llave; no necesita auth):
+
+```ts
+const code = new URLSearchParams(location.search).get("sala");
+const res = await fetch(`${HUB_URL}/api/rooms/${code}`);
+if (!res.ok) throw new Error("Sala no válida o caducada");
+const sala = await res.json();
+// {
+//   code: "ABC234",
+//   status: "open",
+//   game: { slug, name, url },
+//   players: [ { userId, name, role: "player" | "spectator" }, ... ]
+// }
+```
+
+**Paso 3 — identifica al jugador con Neon Auth** (sección 2) y **comprueba que
+está en la sala** antes de darle su sitio:
+
+```ts
+const userId = await getUserIdFromSession(); // sub del JWT de Neon Auth
+const asiento = sala.players.find((p) => p.userId === userId && p.role === "player");
+if (!asiento) {
+  // No es jugador de esta sala. (En el futuro podrás permitir 'spectator'.)
+  throw new Error("No tienes sitio en esta sala");
+}
+// Sienta al jugador. La lista `players` define quiénes pueden ocupar asiento.
+```
+
+> Seguridad: el código abre la lista de jugadores, pero **quién ocupa un asiento
+> lo decide la identidad de Neon Auth**, no el código. Valida siempre el `userId`
+> del jugador logueado contra `sala.players`. Más adelante, los usuarios del hub
+> que no sean jugadores podrán entrar como `spectator`.
 
 ---
 
@@ -201,7 +248,9 @@ CREATE POLICY "jugador-inserta-participantes" ON match_participants
 
 | Necesidad | Cómo |
 |---|---|
-| ¿Quién es el jugador? | Validar el JWT de Neon Auth (JWKS) → `sub` = `profiles.id`. |
+| Entrar por una sala | Lee `?sala=CÓDIGO`, `GET {HUB_URL}/api/rooms/{CÓDIGO}` → juego + `players[]`. |
+| ¿Quién es el jugador? | Identidad de Neon Auth (sesión/JWT) → `sub` = `userId` = `profiles.id`. |
+| ¿Puede ocupar asiento? | El `userId` del logueado debe estar en `sala.players` con `role: "player"`. |
 | ¿Tiene acceso al juego? | `GET /user_games` por Data API con su JWT (RLS filtra). |
 | Guardar resultado | `POST /matches` + `POST /match_participants` (con privilegio de escritura). |
 | Separar práctica de oficial | Campo `kind` (`practice` / `ranked`). |

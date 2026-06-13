@@ -48,6 +48,15 @@ export const participantResult = pgEnum("participant_result", [
   "draw",
 ]);
 
+/** Estado de una sala: abierta (usable) o cerrada (terminada/cancelada). */
+export const roomStatus = pgEnum("room_status", ["open", "closed"]);
+
+/** Rol de un usuario dentro de una sala. */
+export const roomPlayerRole = pgEnum("room_player_role", [
+  "player",
+  "spectator",
+]);
+
 // --- Tablas ------------------------------------------------------------------
 
 /**
@@ -168,6 +177,41 @@ export const matchParticipants = pgTable(
   ],
 );
 
+/**
+ * Sala (lobby) creada en el hub antes de ir al juego. Tiene un código corto que
+ * se introduce en el juego externo; este consulta la sala vía /api/rooms/{code}.
+ */
+export const rooms = pgTable("rooms", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code").notNull().unique(),
+  gameId: uuid("game_id")
+    .notNull()
+    .references(() => games.id, { onDelete: "cascade" }),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  status: roomStatus("status").notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+});
+
+/** Usuarios permitidos en una sala (jugadores; en el futuro, espectadores). */
+export const roomPlayers = pgTable(
+  "room_players",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    role: roomPlayerRole("role").notNull().default("player"),
+  },
+  (t) => [primaryKey({ columns: [t.roomId, t.userId] })],
+);
+
 // --- Tipos inferidos (para usar en la app) -----------------------------------
 
 export type MatchKind = (typeof matchKind.enumValues)[number];
@@ -178,3 +222,6 @@ export type Game = typeof games.$inferSelect;
 export type UserGame = typeof userGames.$inferSelect;
 export type Match = typeof matches.$inferSelect;
 export type MatchParticipant = typeof matchParticipants.$inferSelect;
+export type Room = typeof rooms.$inferSelect;
+export type RoomPlayer = typeof roomPlayers.$inferSelect;
+export type RoomStatus = (typeof roomStatus.enumValues)[number];
