@@ -23,6 +23,7 @@ export const config = {
   matcher: [
     "/hub/:path*",
     "/salas/:path*",
+    "/ligas/:path*",
     "/estadisticas/:path*",
     "/admin/:path*",
     "/perfil/:path*",
