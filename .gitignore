@@ -29,3 +29,7 @@ yarn-error.log*
 # drizzle (las migraciones SÍ se versionan; meta no es secreto)
 
 .vercel
+
+# secretos temporales locales
+*.tmp
+.hub_result_secret*
