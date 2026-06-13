@@ -3,6 +3,8 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   db,
   games,
+  leaguePlayers,
+  leagues,
   profiles,
   roomPlayers,
   rooms,
@@ -23,6 +25,7 @@ export type Sala = {
   createdAt: Date;
   expiresAt: Date | null;
   createdBy: string;
+  leagueId: string | null;
   game: { id: string; slug: string; name: string; url: string; icon: string | null };
   jugadores: SalaJugador[];
 };
@@ -36,6 +39,7 @@ async function montarSalas(
     createdAt: Date;
     expiresAt: Date | null;
     createdBy: string;
+    leagueId: string | null;
     gameId: string;
     slug: string;
     name: string;
@@ -76,6 +80,7 @@ async function montarSalas(
     createdAt: s.createdAt,
     expiresAt: s.expiresAt,
     createdBy: s.createdBy,
+    leagueId: s.leagueId,
     game: {
       id: s.gameId,
       slug: s.slug,
@@ -94,6 +99,7 @@ const seleccionSala = {
   createdAt: rooms.createdAt,
   expiresAt: rooms.expiresAt,
   createdBy: rooms.createdBy,
+  leagueId: rooms.leagueId,
   gameId: games.id,
   slug: games.slug,
   name: games.name,
@@ -113,9 +119,11 @@ export async function getRoomByCode(code: string): Promise<Sala | null> {
   return salas[0] ?? null;
 }
 
-/** Salas abiertas en las que participa el usuario o que ha creado. */
+/**
+ * Salas INDEPENDIENTES (sin liga) abiertas en las que participa el usuario o que
+ * ha creado. Las salas de ligas se devuelven aparte en getLeaguesForUser.
+ */
 export async function getRoomsForUser(userId: string): Promise<Sala[]> {
-  // Salas donde es jugador.
   const comoJugador = await db
     .select({ roomId: roomPlayers.roomId })
     .from(roomPlayers)
@@ -130,9 +138,78 @@ export async function getRoomsForUser(userId: string): Promise<Sala[]> {
     .orderBy(desc(rooms.createdAt));
 
   const propias = filas.filter(
-    (s) => s.createdBy === userId || idsJugador.includes(s.id),
+    (s) =>
+      s.leagueId === null &&
+      (s.createdBy === userId || idsJugador.includes(s.id)),
   );
   return montarSalas(propias);
+}
+
+export type Liga = {
+  id: string;
+  name: string;
+  rounds: number;
+  createdBy: string;
+  game: { id: string; slug: string; name: string; url: string; icon: string | null };
+  salas: Sala[];
+};
+
+/** Ligas en las que participa el usuario o que ha creado, con sus salas (partidos). */
+export async function getLeaguesForUser(userId: string): Promise<Liga[]> {
+  const comoJugador = await db
+    .select({ leagueId: leaguePlayers.leagueId })
+    .from(leaguePlayers)
+    .where(eq(leaguePlayers.userId, userId));
+  const idsJugador = new Set(comoJugador.map((r) => r.leagueId));
+
+  const filasLiga = await db
+    .select({
+      id: leagues.id,
+      name: leagues.name,
+      rounds: leagues.rounds,
+      createdBy: leagues.createdBy,
+      createdAt: leagues.createdAt,
+      gameId: games.id,
+      slug: games.slug,
+      gameName: games.name,
+      url: games.url,
+      icon: games.icon,
+    })
+    .from(leagues)
+    .innerJoin(games, eq(games.id, leagues.gameId))
+    .orderBy(desc(leagues.createdAt));
+
+  const mias = filasLiga.filter(
+    (l) => l.createdBy === userId || idsJugador.has(l.id),
+  );
+  if (mias.length === 0) return [];
+
+  // Todas las salas de esas ligas.
+  const ids = mias.map((l) => l.id);
+  const filasSalas = await db
+    .select(seleccionSala)
+    .from(rooms)
+    .innerJoin(games, eq(games.id, rooms.gameId))
+    .where(inArray(rooms.leagueId, ids))
+    .orderBy(desc(rooms.createdAt));
+  const salas = await montarSalas(filasSalas);
+
+  const salasPorLiga = new Map<string, Sala[]>();
+  for (const s of salas) {
+    if (!s.leagueId) continue;
+    const arr = salasPorLiga.get(s.leagueId) ?? [];
+    arr.push(s);
+    salasPorLiga.set(s.leagueId, arr);
+  }
+
+  return mias.map((l) => ({
+    id: l.id,
+    name: l.name,
+    rounds: l.rounds,
+    createdBy: l.createdBy,
+    game: { id: l.gameId, slug: l.slug, name: l.gameName, url: l.url, icon: l.icon },
+    salas: salasPorLiga.get(l.id) ?? [],
+  }));
 }
 
 /** ¿Tiene el usuario acceso (user_games) a ese juego? */

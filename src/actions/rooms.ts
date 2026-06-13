@@ -4,7 +4,14 @@ import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { db, games, roomPlayers, rooms } from "@/db";
+import {
+  db,
+  games,
+  leaguePlayers,
+  leagues,
+  roomPlayers,
+  rooms,
+} from "@/db";
 import { getCurrentUser } from "@/auth/helpers";
 import { tieneAccesoAlJuego } from "@/db/queries/rooms";
 
@@ -17,6 +24,13 @@ function generarCodigo(longitud = 6): string {
   let c = "";
   for (let i = 0; i < longitud; i++) c += ALFABETO[randomInt(ALFABETO.length)];
   return c;
+}
+
+/** Genera N códigos distintos entre sí (la unicidad global la asegura el índice). */
+function generarCodigosUnicos(n: number): string[] {
+  const set = new Set<string>();
+  while (set.size < n) set.add(generarCodigo());
+  return [...set];
 }
 
 const esquema = z.object({
@@ -112,6 +126,124 @@ export async function crearSala(
 
   revalidatePath("/salas");
   return { ok: true, code, mensaje: `Sala creada. Código: ${code}` };
+}
+
+const esquemaLiga = z.object({
+  gameId: z.string().uuid("Elige un juego"),
+  nombre: z.string().trim().min(2, "Ponle nombre a la liga").max(60),
+  vueltas: z.coerce
+    .number()
+    .int()
+    .min(1, "Mínimo 1 vuelta")
+    .max(4, "Máximo 4 vueltas"),
+  jugadores: z
+    .array(z.string().min(1))
+    .min(2, "Una liga necesita al menos 2 jugadores"),
+});
+
+/**
+ * Crea una liga (todos contra todos, 1v1). Genera una sala por cada partido entre
+ * cada pareja de jugadores, repetido `vueltas` veces. Las salas de liga no caducan.
+ */
+export async function crearLiga(
+  _prev: ResultadoSala,
+  formData: FormData,
+): Promise<ResultadoSala> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false, mensaje: "Tu sesión ha caducado. Recarga la página." };
+  }
+
+  let jugadoresRaw: unknown = [];
+  try {
+    jugadoresRaw = JSON.parse(String(formData.get("jugadores") ?? "[]"));
+  } catch {
+    return { ok: false, mensaje: "Lista de jugadores incorrecta" };
+  }
+
+  const parsed = esquemaLiga.safeParse({
+    gameId: formData.get("gameId"),
+    nombre: formData.get("nombre"),
+    vueltas: formData.get("vueltas"),
+    jugadores: jugadoresRaw,
+  });
+  if (!parsed.success) {
+    return { ok: false, mensaje: parsed.error.issues[0]?.message };
+  }
+  const { gameId, nombre, vueltas } = parsed.data;
+  const jugadores = [...new Set(parsed.data.jugadores)];
+  if (jugadores.length < 2) {
+    return { ok: false, mensaje: "Una liga necesita al menos 2 jugadores." };
+  }
+
+  if (!(await tieneAccesoAlJuego(user.id, gameId))) {
+    return { ok: false, mensaje: "No tienes acceso a ese juego." };
+  }
+  // Cada partido es 1v1; el juego debe admitir 2 jugadores.
+  const [juego] = await db
+    .select({ maxPlayers: games.maxPlayers })
+    .from(games)
+    .where(eq(games.id, gameId))
+    .limit(1);
+  if (juego?.maxPlayers != null && juego.maxPlayers < 2) {
+    return { ok: false, mensaje: "Este juego no admite partidos de 2 jugadores." };
+  }
+
+  // Round-robin: todas las parejas (i<j).
+  const pares: [string, string][] = [];
+  for (let i = 0; i < jugadores.length; i++) {
+    for (let j = i + 1; j < jugadores.length; j++) {
+      pares.push([jugadores[i], jugadores[j]]);
+    }
+  }
+  // Lista de partidos = parejas repetidas `vueltas` veces.
+  const partidos: [string, string][] = [];
+  for (let v = 0; v < vueltas; v++) partidos.push(...pares);
+
+  try {
+    const [liga] = await db
+      .insert(leagues)
+      .values({ name: nombre, gameId, rounds: vueltas, createdBy: user.id })
+      .returning({ id: leagues.id });
+
+    await db
+      .insert(leaguePlayers)
+      .values(jugadores.map((uid) => ({ leagueId: liga.id, userId: uid })));
+
+    // Una sala por partido (sin caducidad), en lote.
+    const codigos = generarCodigosUnicos(partidos.length);
+    const salas = await db
+      .insert(rooms)
+      .values(
+        codigos.map((code) => ({
+          code,
+          gameId,
+          createdBy: user.id,
+          leagueId: liga.id,
+          expiresAt: null,
+        })),
+      )
+      .returning({ id: rooms.id, code: rooms.code });
+
+    const idPorCode = new Map(salas.map((s) => [s.code, s.id]));
+    const jugadoresSalas = partidos.flatMap((par, idx) => {
+      const roomId = idPorCode.get(codigos[idx])!;
+      return [
+        { roomId, userId: par[0], role: "player" as const },
+        { roomId, userId: par[1], role: "player" as const },
+      ];
+    });
+    await db.insert(roomPlayers).values(jugadoresSalas);
+
+    revalidatePath("/salas");
+    return {
+      ok: true,
+      mensaje: `Liga «${nombre}» creada con ${partidos.length} partido(s).`,
+    };
+  } catch (e) {
+    console.error("crearLiga error:", e);
+    return { ok: false, mensaje: "No se pudo crear la liga, inténtalo de nuevo." };
+  }
 }
 
 /** Cierra una sala (solo el creador). */

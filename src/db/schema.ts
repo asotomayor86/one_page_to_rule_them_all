@@ -181,8 +181,42 @@ export const matchParticipants = pgTable(
 );
 
 /**
+ * Liga (todos contra todos). Al crearla se genera una sala por cada partido entre
+ * parejas de jugadores apuntados, repetido `rounds` veces (vueltas).
+ */
+export const leagues = pgTable("leagues", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  gameId: uuid("game_id")
+    .notNull()
+    .references(() => games.id, { onDelete: "cascade" }),
+  rounds: integer("rounds").notNull().default(1),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Jugadores apuntados a una liga. */
+export const leaguePlayers = pgTable(
+  "league_players",
+  {
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.leagueId, t.userId] })],
+);
+
+/**
  * Sala (lobby) creada en el hub antes de ir al juego. Tiene un código corto que
  * se introduce en el juego externo; este consulta la sala vía /api/rooms/{code}.
+ * Si pertenece a una liga, `leagueId` la enlaza (y entonces no caduca).
  */
 export const rooms = pgTable("rooms", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -193,6 +227,9 @@ export const rooms = pgTable("rooms", {
   createdBy: text("created_by")
     .notNull()
     .references(() => profiles.id, { onDelete: "cascade" }),
+  leagueId: uuid("league_id").references(() => leagues.id, {
+    onDelete: "cascade",
+  }),
   status: roomStatus("status").notNull().default("open"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -227,4 +264,6 @@ export type Match = typeof matches.$inferSelect;
 export type MatchParticipant = typeof matchParticipants.$inferSelect;
 export type Room = typeof rooms.$inferSelect;
 export type RoomPlayer = typeof roomPlayers.$inferSelect;
+export type League = typeof leagues.$inferSelect;
+export type LeaguePlayer = typeof leaguePlayers.$inferSelect;
 export type RoomStatus = (typeof roomStatus.enumValues)[number];

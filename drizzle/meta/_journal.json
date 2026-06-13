@@ -29,6 +29,13 @@
       "when": 1781372150686,
       "tag": "0003_game_max_players",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781388435116,
+      "tag": "0004_leagues",
+      "breakpoints": true
     }
   ]
 }
