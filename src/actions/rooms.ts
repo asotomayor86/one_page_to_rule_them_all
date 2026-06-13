@@ -4,7 +4,7 @@ import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { db, roomPlayers, rooms } from "@/db";
+import { db, games, roomPlayers, rooms } from "@/db";
 import { getCurrentUser } from "@/auth/helpers";
 import { tieneAccesoAlJuego } from "@/db/queries/rooms";
 
@@ -60,6 +60,19 @@ export async function crearSala(
   // El creador debe tener acceso al juego.
   if (!(await tieneAccesoAlJuego(user.id, gameId))) {
     return { ok: false, mensaje: "No tienes acceso a ese juego." };
+  }
+
+  // No superar el máximo de jugadores del juego (si está definido).
+  const [juego] = await db
+    .select({ maxPlayers: games.maxPlayers })
+    .from(games)
+    .where(eq(games.id, gameId))
+    .limit(1);
+  if (juego?.maxPlayers != null && jugadores.length > juego.maxPlayers) {
+    return {
+      ok: false,
+      mensaje: `Este juego admite como máximo ${juego.maxPlayers} jugadores (has elegido ${jugadores.length}).`,
+    };
   }
 
   // Genera un código único (reintenta si colisiona).

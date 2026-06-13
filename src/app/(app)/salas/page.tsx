@@ -41,6 +41,7 @@ export default async function SalasPage() {
             name: j.name,
             icon: j.icon,
             url: j.url,
+            maxPlayers: j.maxPlayers,
           }))}
           perfiles={perfiles.map((p) => ({
             id: p.id,

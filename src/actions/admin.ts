@@ -216,6 +216,16 @@ const esquemaJuego = z.object({
     .optional()
     .transform((v) => (v ? v : null)),
   active: z.coerce.boolean(),
+  // Máx. jugadores: vacío = sin límite; si se indica, entre 2 y 64.
+  maxPlayers: z.preprocess(
+    (v) => (v === "" || v == null ? null : v),
+    z.coerce
+      .number()
+      .int()
+      .min(2, "El máximo de jugadores debe ser al menos 2")
+      .max(64, "El máximo de jugadores es demasiado alto")
+      .nullable(),
+  ),
 });
 
 /** Crea un juego nuevo o actualiza uno existente (si llega `id`). */
@@ -233,6 +243,7 @@ export async function guardarJuego(
     url: formData.get("url"),
     icon: formData.get("icon"),
     active: formData.get("active") === "on" || formData.get("active") === "true",
+    maxPlayers: formData.get("maxPlayers"),
   });
   if (!parsed.success) {
     return { ok: false, mensaje: parsed.error.issues[0]?.message };

@@ -4,7 +4,13 @@ import { useActionState, useState } from "react";
 import { crearSala, type ResultadoSala } from "@/actions/rooms";
 import { Aviso, estiloCampo } from "@/components/ui";
 
-type Juego = { id: string; name: string; icon: string | null; url: string };
+type Juego = {
+  id: string;
+  name: string;
+  icon: string | null;
+  url: string;
+  maxPlayers: number | null;
+};
 type Perfil = { id: string; nombre: string };
 
 const inicial: ResultadoSala = { ok: false };
@@ -26,6 +32,8 @@ export function CreateRoomForm({
 
   const juego = juegos.find((j) => j.id === gameId);
   const jugadoresJSON = JSON.stringify([...sel]);
+  const max = juego?.maxPlayers ?? null;
+  const excedeMax = max != null && sel.size > max;
 
   function toggle(id: string) {
     setSel((prev) => {
@@ -80,8 +88,8 @@ export function CreateRoomForm({
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={{ fontSize: "0.9rem" }}>
           Jugadores{" "}
-          <span style={{ color: "var(--texto-suave)" }}>
-            ({sel.size} seleccionados)
+          <span style={{ color: excedeMax ? "var(--rojo)" : "var(--texto-suave)" }}>
+            ({sel.size} seleccionados{max != null ? ` · máx ${max}` : ""})
           </span>
         </span>
         <div
@@ -117,17 +125,24 @@ export function CreateRoomForm({
         </div>
       </div>
 
+      {excedeMax && (
+        <Aviso tipo="error">
+          {juego?.name} admite como máximo {max} jugadores. Quita {sel.size - max!}{" "}
+          para poder crear la sala.
+        </Aviso>
+      )}
+
       <button
         type="submit"
-        disabled={enviando}
+        disabled={enviando || excedeMax}
         style={{
           padding: "0.6rem",
           borderRadius: 8,
           border: "none",
-          background: "var(--acento-fuerte)",
+          background: excedeMax ? "var(--borde)" : "var(--acento-fuerte)",
           color: "white",
           fontWeight: 600,
-          cursor: enviando ? "wait" : "pointer",
+          cursor: enviando || excedeMax ? "not-allowed" : "pointer",
         }}
       >
         {enviando ? "Creando…" : "Crear sala"}

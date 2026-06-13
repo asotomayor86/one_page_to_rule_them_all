@@ -50,6 +50,29 @@ export function GameForm({ juego }: { juego?: Game }) {
         defaultValue={juego?.url ?? ""}
         style={estiloCampo}
       />
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          fontSize: "0.9rem",
+        }}
+      >
+        <span style={{ whiteSpace: "nowrap" }}>Máx. jugadores</span>
+        <input
+          name="maxPlayers"
+          type="number"
+          inputMode="numeric"
+          min={2}
+          max={64}
+          placeholder="sin límite"
+          defaultValue={juego?.maxPlayers ?? ""}
+          style={{ ...estiloCampo, flex: "0 0 110px" }}
+        />
+        <span style={{ color: "var(--texto-suave)", fontSize: "0.8rem" }}>
+          (vacío = sin límite)
+        </span>
+      </label>
       <input
         name="description"
         placeholder="Descripción (opcional)"

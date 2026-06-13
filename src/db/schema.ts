@@ -98,6 +98,9 @@ export const games = pgTable(
     url: text("url").notNull(),
     icon: text("icon"),
     active: boolean("active").notNull().default(true),
+    // Máximo de jugadores que admite el juego. null = sin límite. Se usa para
+    // impedir crear salas con más jugadores de los que soporta el juego.
+    maxPlayers: integer("max_players"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
