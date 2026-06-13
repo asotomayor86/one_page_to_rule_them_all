@@ -4,6 +4,7 @@ import { getLeaguesForUser } from "@/db/queries/rooms";
 import { listarPerfiles } from "@/db/queries/admin";
 import { CreateLeagueForm } from "@/components/create-league-form";
 import { RoomCard } from "@/components/room-card";
+import { ClasificacionTable } from "@/components/clasificacion-table";
 import { Card, SeccionTitulo } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +69,20 @@ export default async function LigasPage() {
             >
               🏆 {liga.name}
             </SeccionTitulo>
+
+            {/* Clasificación de la liga */}
+            <ClasificacionTable filas={liga.clasificacion} />
+
+            <h3
+              className="seccion-titulo"
+              style={{
+                margin: "1rem 0 0.6rem",
+                fontSize: "0.95rem",
+                color: "var(--texto-suave)",
+              }}
+            >
+              Partidos
+            </h3>
             {liga.salas.length === 0 ? (
               <Card>
                 <p style={{ margin: 0, color: "var(--texto-suave)" }}>

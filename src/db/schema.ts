@@ -147,6 +147,9 @@ export const matches = pgTable(
     gameId: uuid("game_id")
       .notNull()
       .references(() => games.id, { onDelete: "cascade" }),
+    // Sala de la que viene el resultado (si lo registró un juego). Permite atribuir
+    // la partida a su liga (room.league_id) para la clasificación.
+    roomId: uuid("room_id").references(() => rooms.id, { onDelete: "set null" }),
     kind: matchKind("kind").notNull(),
     playedAt: timestamp("played_at", { withTimezone: true })
       .notNull()

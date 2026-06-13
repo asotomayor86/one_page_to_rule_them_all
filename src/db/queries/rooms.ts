@@ -5,6 +5,8 @@ import {
   games,
   leaguePlayers,
   leagues,
+  matchParticipants,
+  matches,
   profiles,
   roomPlayers,
   rooms,
@@ -145,6 +147,16 @@ export async function getRoomsForUser(userId: string): Promise<Sala[]> {
   return montarSalas(propias);
 }
 
+export type FilaClasificacion = {
+  userId: string;
+  nombre: string;
+  pj: number; // partidos jugados
+  v: number; // victorias
+  e: number; // empates
+  d: number; // derrotas
+  pts: number; // puntos (V=3, E=1, D=0)
+};
+
 export type Liga = {
   id: string;
   name: string;
@@ -152,6 +164,7 @@ export type Liga = {
   createdBy: string;
   game: { id: string; slug: string; name: string; url: string; icon: string | null };
   salas: Sala[];
+  clasificacion: FilaClasificacion[];
 };
 
 /** Ligas en las que participa el usuario o que ha creado, con sus salas (partidos). */
@@ -202,6 +215,70 @@ export async function getLeaguesForUser(userId: string): Promise<Liga[]> {
     salasPorLiga.set(s.leagueId, arr);
   }
 
+  // --- Clasificación: jugadores apuntados + resultados de los partidos jugados ---
+  const filasLP = await db
+    .select({
+      leagueId: leaguePlayers.leagueId,
+      userId: leaguePlayers.userId,
+      displayName: profiles.displayName,
+      nickname: profiles.nickname,
+    })
+    .from(leaguePlayers)
+    .innerJoin(profiles, eq(profiles.id, leaguePlayers.userId))
+    .where(inArray(leaguePlayers.leagueId, ids));
+
+  // Resultados de partidos de estas ligas (match → room → league).
+  const filasRes = await db
+    .select({
+      leagueId: rooms.leagueId,
+      userId: matchParticipants.userId,
+      result: matchParticipants.result,
+    })
+    .from(matches)
+    .innerJoin(rooms, eq(rooms.id, matches.roomId))
+    .innerJoin(matchParticipants, eq(matchParticipants.matchId, matches.id))
+    .where(inArray(rooms.leagueId, ids));
+
+  const clasifPorLiga = new Map<string, Map<string, FilaClasificacion>>();
+  for (const lp of filasLP) {
+    const m = clasifPorLiga.get(lp.leagueId) ?? new Map();
+    m.set(lp.userId, {
+      userId: lp.userId,
+      nombre: lp.nickname || lp.displayName,
+      pj: 0,
+      v: 0,
+      e: 0,
+      d: 0,
+      pts: 0,
+    });
+    clasifPorLiga.set(lp.leagueId, m);
+  }
+  for (const r of filasRes) {
+    if (!r.leagueId) continue;
+    const fila = clasifPorLiga.get(r.leagueId)?.get(r.userId);
+    if (!fila) continue;
+    fila.pj++;
+    if (r.result === "win") {
+      fila.v++;
+      fila.pts += 3;
+    } else if (r.result === "draw") {
+      fila.e++;
+      fila.pts += 1;
+    } else {
+      fila.d++;
+    }
+  }
+
+  function ordenarClasif(map?: Map<string, FilaClasificacion>): FilaClasificacion[] {
+    return [...(map?.values() ?? [])].sort(
+      (a, b) =>
+        b.pts - a.pts ||
+        b.v - a.v ||
+        b.v - b.d - (a.v - a.d) ||
+        a.nombre.localeCompare(b.nombre, "es"),
+    );
+  }
+
   return mias.map((l) => ({
     id: l.id,
     name: l.name,
@@ -209,6 +286,7 @@ export async function getLeaguesForUser(userId: string): Promise<Liga[]> {
     createdBy: l.createdBy,
     game: { id: l.gameId, slug: l.slug, name: l.gameName, url: l.url, icon: l.icon },
     salas: salasPorLiga.get(l.id) ?? [],
+    clasificacion: ordenarClasif(clasifPorLiga.get(l.id)),
   }));
 }
 

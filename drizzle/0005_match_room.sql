@@ -1,0 +1,2 @@
+ALTER TABLE "matches" ADD COLUMN "room_id" uuid;--> statement-breakpoint
+ALTER TABLE "matches" ADD CONSTRAINT "matches_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE set null ON UPDATE no action;

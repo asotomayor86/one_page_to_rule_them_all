@@ -116,6 +116,7 @@ export async function POST(
       .insert(matches)
       .values({
         gameId: sala.gameId,
+        roomId: sala.id,
         kind,
         notes: notes ?? `Sala ${code.toUpperCase()}`,
       })
