@@ -131,8 +131,8 @@ export async function POST(
       })),
     );
 
-    await db.update(rooms).set({ status: "closed" }).where(eq(rooms.id, sala.id));
-
+    // No cerramos la sala: una misma sala puede albergar varias partidas
+    // (revanchas). Se cierra manualmente desde el hub o al caducar.
     return NextResponse.json(
       { ok: true, matchId: match.id },
       { headers: CORS },
