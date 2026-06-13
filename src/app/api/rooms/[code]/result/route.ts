@@ -79,7 +79,12 @@ export async function POST(
 
   // La sala debe existir y estar abierta.
   const [sala] = await db
-    .select({ id: rooms.id, gameId: rooms.gameId, status: rooms.status })
+    .select({
+      id: rooms.id,
+      gameId: rooms.gameId,
+      status: rooms.status,
+      leagueId: rooms.leagueId,
+    })
     .from(rooms)
     .where(eq(rooms.code, code.trim().toUpperCase()))
     .limit(1);
@@ -132,8 +137,15 @@ export async function POST(
       })),
     );
 
-    // No cerramos la sala: una misma sala puede albergar varias partidas
-    // (revanchas). Se cierra manualmente desde el hub o al caducar.
+    // Un partido de LIGA se juega una sola vez → cerramos su sala. Las salas
+    // sueltas (sin liga) se quedan abiertas para permitir revanchas.
+    if (sala.leagueId) {
+      await db
+        .update(rooms)
+        .set({ status: "closed" })
+        .where(eq(rooms.id, sala.id));
+    }
+
     return NextResponse.json(
       { ok: true, matchId: match.id },
       { headers: CORS },
