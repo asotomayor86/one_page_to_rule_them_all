@@ -19,13 +19,33 @@ sienta a quienes están en la lista de la sala. Al terminar, escribe el resultad
 ## 1. Variables de entorno del juego
 
 ```bash
+# Cliente (público)
 HUB_URL=https://one-page-to-rule-them-all.vercel.app     # el hub (para /api/rooms)
-NEON_AUTH_BASE_URL=https://tu-proyecto.neon.tech         # servidor de Neon Auth
-NEON_DATA_API_URL=https://app-xxxx.dataapi.neon.tech/rest/v1   # opcional (escritura por Data API)
+NEON_AUTH_BASE_URL=https://tu-proyecto.neon.tech         # MISMO proyecto Neon Auth que el hub
 
-# Solo en el BACKEND del juego, para escribir resultados de forma fiable:
+# Solo en el BACKEND del juego
+HUB_RESULT_SECRET=...                                    # secreto compartido para devolver resultados
+NEON_AUTH_COOKIE_SECRET=...                              # 32+ chars, propio del juego
+
+# Opcionales (solo si escribes resultados por Data API/SQL en vez de por el hub)
+NEON_DATA_API_URL=https://app-xxxx.dataapi.neon.tech/rest/v1
 GAME_SERVICE_DATABASE_URL=postgresql://...               # conexión privilegiada (no exponer)
 ```
+
+> **Clave del SSO:** usa el **mismo `NEON_AUTH_BASE_URL`** que el hub. Así las
+> cuentas (email+contraseña) del hub funcionan en el juego sin login propio.
+> `HUB_RESULT_SECRET` te lo da el administrador del hub (es su variable de entorno).
+
+---
+
+## 0. Login en el juego (mismo Neon Auth que el hub)
+
+El juego es un cliente del **mismo proyecto Neon Auth**. Configúralo igual que el
+hub (ver su README): instala `@neondatabase/auth`, crea el cliente/servidor con
+`NEON_AUTH_BASE_URL`, expón `/api/auth/[...path]` y usa el formulario de login
+(`<SignInForm>`), o `auth.signIn.email(...)`. Como el juego vive en otro dominio,
+la sesión del hub no viaja: **el juego pide login (email+contraseña)**, que es lo
+deseado. Tras iniciar sesión, `getSession()` te da `user.id` (= `sub`).
 
 ---
 
@@ -130,17 +150,49 @@ async function tieneAcceso(token: string, slug: string): Promise<boolean> {
 Una partida = **1 fila en `matches`** (cabecera) + **N filas en
 `match_participants`** (una por jugador).
 
-### Modelo de permisos (importante)
+El resultado lo escribe el **BACKEND del juego** (no el navegador), para que un
+jugador no pueda falsearlo.
 
-Por seguridad, las **escrituras** en `matches` / `match_participants` están
-restringidas por RLS a administradores. Para que un jugador no pueda falsear
-resultados, **el resultado lo escribe el BACKEND del juego**, no el navegador:
+### 4·0. Recomendado: devolver el resultado al hub
 
-- **Recomendado:** el servidor del juego escribe con `GAME_SERVICE_DATABASE_URL`
-  (conexión privilegiada que salta RLS), o con un rol de servicio dedicado.
-- **Opcional (confianza):** si os fiais entre familia, podéis añadir una política
-  RLS que permita a un autenticado insertar partidas de juegos a los que tiene
-  acceso (ver el final de este documento) y escribir desde el cliente con su JWT.
+La forma más sencilla y que encaja con las salas: el backend del juego hace un
+`POST` al hub. El hub valida que los jugadores pertenecen a la sala, escribe la
+partida en estadísticas y **cierra la sala**. El juego no necesita acceso a la BD.
+
+```http
+POST {HUB_URL}/api/rooms/{CÓDIGO}/result
+Authorization: Bearer {HUB_RESULT_SECRET}
+Content-Type: application/json
+
+{
+  "kind": "ranked",                 // o "practice"
+  "notes": "Final reñida",          // opcional
+  "results": [
+    { "userId": "user_abc", "result": "win",  "score": 21, "position": 1 },
+    { "userId": "user_def", "result": "loss", "score": 14, "position": 2 }
+  ]
+}
+```
+
+Respuesta: `{ "ok": true, "matchId": "…" }`. Errores: `401` (secreto incorrecto),
+`404` (sala no existe), `409` (sala ya cerrada), `400` (jugador fuera de la sala).
+
+```ts
+// En el backend del juego, al terminar la partida:
+await fetch(`${process.env.HUB_URL}/api/rooms/${code}/result`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${process.env.HUB_RESULT_SECRET}`,
+  },
+  body: JSON.stringify({ kind: "ranked", results }),
+});
+```
+
+> Notas: `userId` es el `sub` del JWT de cada jugador (= `profiles.id`). La sala se
+> cierra tras enviar el resultado (no se puede enviar dos veces el mismo).
+
+Si prefieres no pasar por el hub, tienes dos alternativas equivalentes:
 
 ### 4a. Vía Data API (PostgREST)
 
@@ -252,5 +304,6 @@ CREATE POLICY "jugador-inserta-participantes" ON match_participants
 | ¿Quién es el jugador? | Identidad de Neon Auth (sesión/JWT) → `sub` = `userId` = `profiles.id`. |
 | ¿Puede ocupar asiento? | El `userId` del logueado debe estar en `sala.players` con `role: "player"`. |
 | ¿Tiene acceso al juego? | `GET /user_games` por Data API con su JWT (RLS filtra). |
-| Guardar resultado | `POST /matches` + `POST /match_participants` (con privilegio de escritura). |
+| Devolver resultado (recomendado) | `POST {HUB_URL}/api/rooms/{CÓDIGO}/result` con `HUB_RESULT_SECRET` (cierra la sala). |
+| Guardar resultado (alternativa) | `POST /matches` + `POST /match_participants` (con privilegio de escritura). |
 | Separar práctica de oficial | Campo `kind` (`practice` / `ranked`). |
