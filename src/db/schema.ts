@@ -237,6 +237,10 @@ export const rooms = pgTable("rooms", {
     onDelete: "cascade",
   }),
   status: roomStatus("status").notNull().default("open"),
+  // Best-of-N: el partido se juega hasta que alguien llegue a `wins_needed`
+  // victorias. 1 = una sola partida. Para salas de liga, se hereda el valor
+  // de la liga al crearse.
+  winsNeeded: integer("wins_needed").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

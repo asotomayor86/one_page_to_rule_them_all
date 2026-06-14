@@ -28,6 +28,7 @@ export type Sala = {
   expiresAt: Date | null;
   createdBy: string;
   leagueId: string | null;
+  winsNeeded: number;
   game: { id: string; slug: string; name: string; url: string; icon: string | null };
   jugadores: SalaJugador[];
 };
@@ -42,6 +43,7 @@ async function montarSalas(
     expiresAt: Date | null;
     createdBy: string;
     leagueId: string | null;
+    winsNeeded: number;
     gameId: string;
     slug: string;
     name: string;
@@ -83,6 +85,7 @@ async function montarSalas(
     expiresAt: s.expiresAt,
     createdBy: s.createdBy,
     leagueId: s.leagueId,
+    winsNeeded: s.winsNeeded,
     game: {
       id: s.gameId,
       slug: s.slug,
@@ -102,6 +105,7 @@ const seleccionSala = {
   expiresAt: rooms.expiresAt,
   createdBy: rooms.createdBy,
   leagueId: rooms.leagueId,
+  winsNeeded: rooms.winsNeeded,
   gameId: games.id,
   slug: games.slug,
   name: games.name,

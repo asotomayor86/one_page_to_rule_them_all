@@ -35,6 +35,12 @@ function generarCodigosUnicos(n: number): string[] {
 
 const esquema = z.object({
   gameId: z.string().uuid("Elige un juego"),
+  victorias: z.coerce
+    .number()
+    .int()
+    .min(1, "Mínimo 1 victoria")
+    .max(9, "Máximo 9 victorias")
+    .default(1),
   jugadores: z
     .array(z.string().min(1))
     .min(1, "Añade al menos un jugador"),
@@ -62,12 +68,13 @@ export async function crearSala(
 
   const parsed = esquema.safeParse({
     gameId: formData.get("gameId"),
+    victorias: formData.get("victorias") ?? 1,
     jugadores: jugadoresRaw,
   });
   if (!parsed.success) {
     return { ok: false, mensaje: parsed.error.issues[0]?.message };
   }
-  const { gameId } = parsed.data;
+  const { gameId, victorias } = parsed.data;
   // Quita duplicados.
   const jugadores = [...new Set(parsed.data.jugadores)];
 
@@ -109,7 +116,13 @@ export async function crearSala(
     const expira = new Date(Date.now() + 12 * 60 * 60 * 1000); // 12 h
     const [sala] = await db
       .insert(rooms)
-      .values({ code, gameId, createdBy: user.id, expiresAt: expira })
+      .values({
+        code,
+        gameId,
+        createdBy: user.id,
+        winsNeeded: victorias,
+        expiresAt: expira,
+      })
       .returning({ id: rooms.id });
 
     await db.insert(roomPlayers).values(
@@ -222,7 +235,9 @@ export async function crearLiga(
       .insert(leaguePlayers)
       .values(jugadores.map((uid) => ({ leagueId: liga.id, userId: uid })));
 
-    // Una sala por partido (sin caducidad), en lote.
+    // Una sala por partido (sin caducidad), en lote. winsNeeded de cada sala
+    // se hereda de la liga, así el endpoint /api/rooms/{code} ya no necesita
+    // mirarlo en la tabla de ligas.
     const codigos = generarCodigosUnicos(partidos.length);
     const salas = await db
       .insert(rooms)
@@ -232,6 +247,7 @@ export async function crearLiga(
           gameId,
           createdBy: user.id,
           leagueId: liga.id,
+          winsNeeded: victorias,
           expiresAt: null,
         })),
       )

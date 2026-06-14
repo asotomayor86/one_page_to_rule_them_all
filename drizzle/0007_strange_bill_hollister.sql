@@ -1,0 +1,1 @@
+ALTER TABLE "rooms" ADD COLUMN "wins_needed" integer DEFAULT 1 NOT NULL;

@@ -8,7 +8,7 @@
  * Ver INTEGRACION-JUEGOS.md.
  */
 import { NextResponse } from "next/server";
-import { getLeagueWinsNeeded, getRoomByCode } from "@/db/queries/rooms";
+import { getRoomByCode } from "@/db/queries/rooms";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -38,18 +38,18 @@ export async function GET(
     );
   }
 
-  // Para partidos de liga: a cuántas victorias se juega (best-of-N). El juego
-  // reinicia la partida hasta que alguien llegue a `winsNeeded` y entonces
-  // devuelve a todos al hub. Para salas sueltas, winsNeeded = 1 y league = false.
+  // A cuántas victorias se juega (best-of-N). El juego reinicia la partida
+  // hasta que alguien llegue a `winsNeeded` y entonces devuelve a todos al hub.
+  // Para salas sueltas el creador lo elige; para salas de liga se hereda de
+  // la liga al crearlas.
   const league = sala.leagueId != null;
-  const winsNeeded = league ? await getLeagueWinsNeeded(sala.leagueId) : 1;
 
   return NextResponse.json(
     {
       code: sala.code,
       status: sala.status,
       league,
-      winsNeeded,
+      winsNeeded: sala.winsNeeded,
       game: {
         slug: sala.game.slug,
         name: sala.game.name,
