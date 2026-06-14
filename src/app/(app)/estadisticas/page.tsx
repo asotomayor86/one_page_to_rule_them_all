@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireUser } from "@/auth/helpers";
 import { getAllGames } from "@/db/queries/games";
 import { listarPerfiles } from "@/db/queries/admin";
 import { headToHead, historial, ranking } from "@/db/queries/stats";
@@ -18,7 +19,8 @@ export default async function EstadisticasPage({
   const sp = await searchParams;
   const gameId = sp.juego || undefined;
 
-  const [juegos, perfiles, filas, ultimas] = await Promise.all([
+  const [{ profile }, juegos, perfiles, filas, ultimas] = await Promise.all([
+    requireUser(),
     getAllGames(),
     listarPerfiles(),
     ranking(gameId),
@@ -213,7 +215,7 @@ export default async function EstadisticasPage({
 
       {/* Historial */}
       <SeccionTitulo>🕓 Partidas recientes</SeccionTitulo>
-      <HistorialLista partidas={ultimas} />
+      <HistorialLista partidas={ultimas} esAdmin={profile.isAdmin} />
     </>
   );
 }

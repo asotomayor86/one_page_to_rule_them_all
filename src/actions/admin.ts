@@ -346,3 +346,20 @@ export async function registrarPartida(
   revalidatePath("/estadisticas");
   return { ok: true, mensaje: "Partida registrada" };
 }
+
+// --- Eliminar partida --------------------------------------------------------
+
+/**
+ * Elimina una partida del historial (y, en cascada, sus participantes). Al
+ * borrar la fila de `matches`, el ranking deja de contarla automáticamente —
+ * `ranking()` agrega sobre `match_participants` y FK con ON DELETE CASCADE
+ * propaga la limpieza.
+ */
+export async function eliminarPartida(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("matchId") ?? "");
+  if (!id) return;
+  await db.delete(matches).where(eq(matches.id, id));
+  revalidatePath("/estadisticas");
+  revalidatePath("/admin/partidas");
+}

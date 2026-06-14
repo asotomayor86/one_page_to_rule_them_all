@@ -1,5 +1,6 @@
 import type { PartidaHistorial } from "@/db/queries/stats";
 import { Card } from "@/components/ui";
+import { DeleteMatchButton } from "@/components/delete-match-button";
 
 const etiquetaResultado: Record<string, { texto: string; color: string }> = {
   win: { texto: "Ganó", color: "var(--verde)" },
@@ -16,11 +17,13 @@ function formatearFecha(fecha: Date): string {
   }).format(new Date(fecha));
 }
 
-/** Lista de partidas recientes con sus participantes y resultados. */
+/** Lista de partidas recientes con sus participantes y resultados (una por línea). */
 export function HistorialLista({
   partidas,
+  esAdmin = false,
 }: {
   partidas: PartidaHistorial[];
+  esAdmin?: boolean;
 }) {
   if (partidas.length === 0) {
     return (
@@ -33,53 +36,60 @@ export function HistorialLista({
   }
 
   return (
-    <div style={{ display: "grid", gap: "0.7rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
       {partidas.map((p) => (
-        <Card key={p.id}>
-          <div
+        <div
+          key={p.id}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.6rem",
+            padding: "0.45rem 0.7rem",
+            background: "var(--superficie)",
+            border: "1px solid var(--borde)",
+            borderRadius: 8,
+            fontSize: "0.85rem",
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+            {(p.gameIcon || "🎮") + " " + p.gameName}
+          </span>
+          {p.kind === "practice" && (
+            <span
+              style={{
+                fontSize: "0.7rem",
+                color: "var(--texto-suave)",
+                border: "1px solid var(--borde)",
+                borderRadius: 6,
+                padding: "0 0.35rem",
+                whiteSpace: "nowrap",
+              }}
+              title="No cuenta para el ranking"
+            >
+              práctica
+            </span>
+          )}
+          <span style={{ color: "var(--texto-suave)", whiteSpace: "nowrap" }}>
+            {formatearFecha(p.playedAt)}
+          </span>
+          <span
             style={{
               display: "flex",
-              justifyContent: "space-between",
+              flexWrap: "wrap",
               alignItems: "center",
-              gap: "0.5rem",
-              marginBottom: "0.5rem",
+              gap: "0.35rem",
+              flex: 1,
+              minWidth: 0,
             }}
           >
-            <strong>
-              {(p.gameIcon || "🎮") + " " + p.gameName}
-              {p.kind === "practice" && (
-                <span
-                  style={{
-                    marginLeft: 6,
-                    fontSize: "0.7rem",
-                    color: "var(--texto-suave)",
-                    border: "1px solid var(--borde)",
-                    borderRadius: 6,
-                    padding: "0 0.35rem",
-                  }}
-                >
-                  práctica
-                </span>
-              )}
-            </strong>
-            <span style={{ fontSize: "0.8rem", color: "var(--texto-suave)" }}>
-              {formatearFecha(p.playedAt)}
-            </span>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
             {p.participantes.map((part, i) => {
               const e = etiquetaResultado[part.result];
               return (
-                <span
-                  key={i}
-                  style={{
-                    fontSize: "0.85rem",
-                    padding: "0.2rem 0.5rem",
-                    borderRadius: 8,
-                    background: "var(--superficie-2)",
-                    border: "1px solid var(--borde)",
-                  }}
-                >
+                <span key={i} style={{ whiteSpace: "nowrap" }}>
+                  {i > 0 && (
+                    <span style={{ color: "var(--texto-suave)" }}> · </span>
+                  )}
                   {part.nombre}{" "}
                   <span style={{ color: e.color, fontWeight: 600 }}>
                     {e.texto}
@@ -87,14 +97,22 @@ export function HistorialLista({
                   {part.score !== null && (
                     <span style={{ color: "var(--texto-suave)" }}>
                       {" "}
-                      · {part.score}
+                      ({part.score})
                     </span>
                   )}
                 </span>
               );
             })}
-          </div>
-        </Card>
+          </span>
+          {esAdmin && (
+            <DeleteMatchButton
+              matchId={p.id}
+              resumen={`${p.gameName} · ${formatearFecha(p.playedAt)} · ${p.participantes
+                .map((pa) => `${pa.nombre} ${etiquetaResultado[pa.result].texto}`)
+                .join(" / ")}`}
+            />
+          )}
+        </div>
       ))}
     </div>
   );
