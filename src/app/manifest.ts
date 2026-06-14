@@ -16,10 +16,12 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "any",
     background_color: "#1b1f2a",
     theme_color: "#1b1f2a",
+    // Un único SVG vale para todos los tamaños (Android Chrome lo escala). El
+    // mismo archivo se declara como "any" (icono base) y como "maskable" (si el
+    // sistema lo recorta con su propia máscara).
     icons: [
-      { src: "/icon", sizes: "192x192", type: "image/png" },
-      { src: "/icon", sizes: "512x512", type: "image/png" },
-      { src: "/apple-icon", sizes: "180x180", type: "image/png" },
+      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
     ],
   };
 }
