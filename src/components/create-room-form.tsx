@@ -47,7 +47,9 @@ export function CreateRoomForm({
   function abrirJuego(code: string) {
     if (!juego) return;
     const sep = juego.url.includes("?") ? "&" : "?";
-    window.open(`${juego.url}${sep}sala=${code}`, "_blank", "noopener");
+    // Misma pestaña: cuando la partida termine, el juego redirige de vuelta al
+    // hub (window.location.href = HUB_URL), así no se acumulan ventanas.
+    window.location.href = `${juego.url}${sep}sala=${code}`;
   }
 
   if (juegos.length === 0) {

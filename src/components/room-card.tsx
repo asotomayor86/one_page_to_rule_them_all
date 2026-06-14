@@ -74,8 +74,6 @@ export function RoomCard({
         ) : (
           <a
             href={enlaceJuego(sala.game.url, sala.code)}
-            target="_blank"
-            rel="noopener noreferrer"
             style={{
               padding: "0.35rem 0.8rem",
               borderRadius: 7,
