@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/auth/client";
@@ -17,10 +18,21 @@ const enlaces = [
   { href: "/perfil", label: "Perfil" },
 ];
 
-/** Barra de navegación del área privada (mobile-first). */
+/**
+ * Barra de navegación del área privada. Dos variantes según viewport:
+ *  - Escritorio (>720px): enlaces horizontales, nombre y "Salir" en la barra.
+ *  - Móvil (≤720px): solo logo y botón hamburguesa; al abrir despliega un panel
+ *    con los enlaces apilados y el botón "Salir". El CSS está en globals.css.
+ */
 export function Nav({ displayName, isAdmin }: Props) {
   const pathname = usePathname();
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  // Cierra el drawer al cambiar de ruta (cuando pulsas un enlace dentro).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   async function cerrarSesion() {
     await authClient.signOut();
@@ -32,8 +44,12 @@ export function Nav({ displayName, isAdmin }: Props) {
     ? [...enlaces, { href: "/admin", label: "Admin" }]
     : enlaces;
 
+  const esActivo = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
+
   return (
     <header
+      className={open ? "nav-open" : undefined}
       style={{
         borderBottom: "1px solid var(--borde)",
         background: "var(--superficie)",
@@ -50,23 +66,20 @@ export function Nav({ displayName, isAdmin }: Props) {
           display: "flex",
           alignItems: "center",
           gap: "0.75rem",
-          flexWrap: "wrap",
         }}
       >
-        <Link href="/hub" style={{ fontWeight: 700 }}>
+        <Link
+          href="/hub"
+          style={{ fontWeight: 700 }}
+          onClick={() => setOpen(false)}
+        >
           🎲 Hub
         </Link>
-        <div
-          style={{
-            display: "flex",
-            gap: "0.5rem",
-            flex: 1,
-            flexWrap: "wrap",
-          }}
-        >
+
+        {/* Enlaces en línea (solo escritorio). */}
+        <div className="nav-links">
           {items.map((e) => {
-            const activo =
-              pathname === e.href || pathname.startsWith(e.href + "/");
+            const activo = esActivo(e.href);
             return (
               <Link
                 key={e.href}
@@ -84,7 +97,10 @@ export function Nav({ displayName, isAdmin }: Props) {
             );
           })}
         </div>
+
+        {/* Nombre y "Salir" en línea (solo escritorio). */}
         <span
+          className="nav-user"
           style={{
             fontSize: "0.85rem",
             color: "var(--texto-suave)",
@@ -97,6 +113,7 @@ export function Nav({ displayName, isAdmin }: Props) {
           {displayName}
         </span>
         <button
+          className="nav-signout"
           type="button"
           onClick={cerrarSesion}
           style={{
@@ -111,7 +128,59 @@ export function Nav({ displayName, isAdmin }: Props) {
         >
           Salir
         </button>
+
+        {/* Hamburguesa (solo móvil). */}
+        <button
+          type="button"
+          className="nav-toggle"
+          aria-label={open ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={open}
+          aria-controls="nav-drawer"
+          onClick={() => setOpen((o) => !o)}
+          style={{ marginLeft: "auto" }}
+        >
+          {open ? "✕" : "☰"}
+        </button>
       </nav>
+
+      {/* Drawer móvil con los mismos enlaces apilados + "Salir". */}
+      <div id="nav-drawer" className="nav-drawer">
+        {items.map((e) => (
+          <Link
+            key={e.href}
+            href={e.href}
+            data-activo={esActivo(e.href)}
+          >
+            {e.label}
+          </Link>
+        ))}
+        <div className="nav-drawer-foot">
+          <span
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {displayName}
+          </span>
+          <button
+            type="button"
+            onClick={cerrarSesion}
+            style={{
+              border: "1px solid var(--borde)",
+              background: "transparent",
+              color: "var(--texto-suave)",
+              borderRadius: 8,
+              padding: "0.45rem 0.85rem",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+            }}
+          >
+            Salir
+          </button>
+        </div>
+      </div>
     </header>
   );
 }
