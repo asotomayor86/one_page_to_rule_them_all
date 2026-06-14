@@ -32,6 +32,17 @@ export function getAuth(): NeonAuth {
     throw new Error("Falta la variable de entorno NEON_AUTH_COOKIE_SECRET");
   }
 
-  instancia = createNeonAuth({ baseUrl, cookies: { secret } });
+  // Si COOKIE_DOMAIN está definido (p. ej. ".familyhub.app"), las cookies de
+  // Neon Auth se emiten con ese dominio y SameSite=Lax, lo que permite que
+  // los juegos (subdominios como hangman.familyhub.app) hereden la sesión
+  // del hub sin volver a pedir contraseña. Sin la variable, comportamiento
+  // por defecto (cookie solo en el dominio del hub, SameSite=strict).
+  const domain = process.env.COOKIE_DOMAIN || undefined;
+  const sameSite = domain ? "lax" : undefined;
+
+  instancia = createNeonAuth({
+    baseUrl,
+    cookies: { secret, domain, sameSite },
+  });
   return instancia;
 }
