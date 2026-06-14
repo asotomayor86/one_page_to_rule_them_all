@@ -20,7 +20,19 @@ function origenPermitido(request: Request): string | null {
   if (!origin) return null;
   try {
     const { hostname } = new URL(origin);
+    // Dominios fijos permitidos: subdominios de Vercel (despliegues sueltos) y
+    // localhost para desarrollo.
     if (hostname.endsWith(".vercel.app") || hostname === "localhost") {
+      return origin;
+    }
+    // Dominio raíz compartido (configurable). COOKIE_DOMAIN suele venir como
+    // ".gamehub.family" para que la cookie viaje a los subdominios; aquí lo
+    // usamos también para permitir CORS desde esos mismos subdominios.
+    const cookieDomain = process.env.COOKIE_DOMAIN || "";
+    const sharedRoot = cookieDomain.startsWith(".")
+      ? cookieDomain.slice(1)
+      : cookieDomain;
+    if (sharedRoot && (hostname === sharedRoot || hostname.endsWith("." + sharedRoot))) {
       return origin;
     }
   } catch {
