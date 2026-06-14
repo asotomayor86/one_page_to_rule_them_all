@@ -1,13 +1,32 @@
 import Link from "next/link";
 import { requireUser } from "@/auth/helpers";
 import { getGamesForUser } from "@/db/queries/games";
+import { getRoomsForUser, getLeaguesForUser } from "@/db/queries/rooms";
 import { Card, SeccionTitulo } from "@/components/ui";
+import { RoomCard } from "@/components/room-card";
 
 export const dynamic = "force-dynamic";
 
 export default async function HubPage() {
   const { profile } = await requireUser();
-  const juegos = await getGamesForUser(profile.id);
+  const [juegos, salas, ligas] = await Promise.all([
+    getGamesForUser(profile.id),
+    getRoomsForUser(profile.id),
+    getLeaguesForUser(profile.id),
+  ]);
+
+  // Partidos pendientes de liga: salas open en ligas donde el usuario juega.
+  const partidosLiga = ligas.flatMap((liga) =>
+    liga.salas
+      .filter(
+        (s) =>
+          s.status === "open" &&
+          s.jugadores.some((j) => j.userId === profile.id),
+      )
+      .map((sala) => ({ ligaName: liga.name, sala })),
+  );
+
+  const totalPendientes = salas.length + partidosLiga.length;
 
   return (
     <>
@@ -55,21 +74,6 @@ export default async function HubPage() {
                   {juego.description}
                 </p>
               )}
-              <a
-                href={juego.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  textAlign: "center",
-                  padding: "0.55rem",
-                  borderRadius: 8,
-                  background: "var(--acento-fuerte)",
-                  color: "white",
-                  fontWeight: 600,
-                }}
-              >
-                Jugar →
-              </a>
             </Card>
           ))}
         </div>
@@ -93,6 +97,54 @@ export default async function HubPage() {
           Ver estadísticas y ranking →
         </Link>
       </Card>
+
+      <SeccionTitulo>
+        Tus invitaciones{" "}
+        {totalPendientes > 0 && (
+          <span style={{ fontSize: "0.85rem", color: "var(--texto-suave)" }}>
+            ({totalPendientes} pendiente{totalPendientes !== 1 ? "s" : ""})
+          </span>
+        )}
+      </SeccionTitulo>
+
+      {totalPendientes === 0 ? (
+        <Card>
+          <p style={{ margin: 0, color: "var(--texto-suave)" }}>
+            No tienes salas ni partidos pendientes. Para jugar, alguien tiene
+            que invitarte desde <Link href="/salas">Salas</Link> o desde una{" "}
+            <Link href="/ligas">Liga</Link>.
+          </p>
+        </Card>
+      ) : (
+        <>
+          {salas.length > 0 && (
+            <div style={{ display: "grid", gap: "0.6rem", marginBottom: "0.9rem" }}>
+              {salas.map((s) => (
+                <RoomCard key={s.id} sala={s} currentUserId={profile.id} />
+              ))}
+            </div>
+          )}
+          {partidosLiga.length > 0 && (
+            <div style={{ display: "grid", gap: "0.6rem" }}>
+              {partidosLiga.map(({ ligaName, sala }) => (
+                <div key={sala.id}>
+                  <div
+                    style={{
+                      fontSize: "0.78rem",
+                      color: "var(--texto-suave)",
+                      marginBottom: "0.25rem",
+                      paddingLeft: "0.1rem",
+                    }}
+                  >
+                    🏆 Liga: {ligaName}
+                  </div>
+                  <RoomCard sala={sala} currentUserId={profile.id} />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </>
   );
 }
