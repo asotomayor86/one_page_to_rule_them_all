@@ -1,18 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "redirects": [
-    { "source": "/hangman", "destination": "/hangman/", "permanent": false },
-    { "source": "/assemble", "destination": "/assemble/", "permanent": false }
-  ],
-  "rewrites": [
-    {
-      "source": "/hangman/:path*",
-      "destination": "https://hangman.gamehub.family/:path*"
-    },
-    {
-      "source": "/assemble/:path*",
-      "destination": "https://assemble.gamehub.family/:path*"
-    }
-  ]
+  "framework": "nextjs"
 }
