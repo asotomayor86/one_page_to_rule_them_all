@@ -1,4 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "rewrites": [
+    {
+      "source": "/hangman/:path*",
+      "destination": "https://hangman.gamehub.family/:path*"
+    },
+    {
+      "source": "/assemble/:path*",
+      "destination": "https://assemble.gamehub.family/:path*"
+    }
+  ]
 }
