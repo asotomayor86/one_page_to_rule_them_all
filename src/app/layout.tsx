@@ -22,6 +22,14 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "GameHub",
+    // Next.js no genera un /apple-icon a partir de un SVG (solo raster), así
+    // que reusamos el mismo /icon.svg. iOS Safari moderno lo acepta como
+    // apple-touch-icon (la animación queda estática en home screen).
+    startupImage: undefined,
+  },
+  icons: {
+    icon: { url: "/icon.svg", type: "image/svg+xml" },
+    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
   // Vincula manifest.ts (Next.js lo genera automáticamente en /manifest.webmanifest).
   manifest: "/manifest.webmanifest",
