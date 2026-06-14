@@ -27,6 +27,10 @@ const CORS: Record<string, string> = {
 const esquema = z.object({
   kind: z.enum(["practice", "ranked"]).default("ranked"),
   notes: z.string().trim().max(200).optional(),
+  // Cierra la sala al recibir este resultado. El juego lo pone a true cuando
+  // la serie (best-of-N) ha terminado, no en cada partida intermedia. Si no
+  // viene, mantenemos el comportamiento histórico (cerrar solo si es liga).
+  closeRoom: z.boolean().optional(),
   results: z
     .array(
       z.object({
@@ -75,7 +79,7 @@ export async function POST(
       { status: 400, headers: CORS },
     );
   }
-  const { kind, notes, results } = parsed.data;
+  const { kind, notes, results, closeRoom } = parsed.data;
 
   // La sala debe existir y estar abierta.
   const [sala] = await db
@@ -137,9 +141,13 @@ export async function POST(
       })),
     );
 
-    // Un partido de LIGA se juega una sola vez → cerramos su sala. Las salas
-    // sueltas (sin liga) se quedan abiertas para permitir revanchas.
-    if (sala.leagueId) {
+    // ¿Cerrar la sala con este resultado?
+    //  - Si el juego envía closeRoom explícitamente, respetamos su decisión
+    //    (true al terminar la serie best-of-N, false en partidas intermedias).
+    //  - Si NO envía el flag (juegos viejos), nos quedamos con el
+    //    comportamiento histórico: cerrar solo cuando es partido de liga.
+    const cerrarSala = closeRoom === undefined ? sala.leagueId !== null : closeRoom;
+    if (cerrarSala) {
       await db
         .update(rooms)
         .set({ status: "closed" })
