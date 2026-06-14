@@ -70,10 +70,26 @@ export function Nav({ displayName, isAdmin }: Props) {
       >
         <Link
           href="/hub"
-          style={{ fontWeight: 700 }}
           onClick={() => setOpen(false)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.45rem",
+            fontWeight: 700,
+            textDecoration: "none",
+            color: "inherit",
+          }}
         >
-          🎲 Hub
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon.svg"
+            alt=""
+            aria-hidden="true"
+            width={28}
+            height={28}
+            style={{ display: "block", borderRadius: 6 }}
+          />
+          GameHub
         </Link>
 
         {/* Enlaces en línea (solo escritorio). */}
