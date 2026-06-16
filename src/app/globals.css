@@ -84,6 +84,81 @@ a {
   backdrop-filter: blur(14px) saturate(140%);
 }
 
+/* --- Banner de instalación (PWA) --- */
+.install-banner {
+  background: linear-gradient(
+    90deg,
+    rgba(123, 92, 255, 0.22),
+    rgba(48, 38, 78, 0.55)
+  );
+  border-bottom: 1px solid var(--borde);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  padding-top: env(safe-area-inset-top);
+}
+.install-banner-row {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0.55rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.install-banner-row img {
+  display: block;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.install-banner-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--texto);
+  line-height: 1.2;
+}
+.install-banner-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.install-banner-cta {
+  border: none;
+  background: var(--acento-fuerte);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.install-banner-close {
+  border: 1px solid var(--borde);
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.install-banner-help {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 1rem 0.7rem 2.4rem;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.install-banner-help strong {
+  color: var(--texto);
+}
+
 /* --- Navegación: dos variantes según viewport --- */
 
 /* Estado por defecto = escritorio: enlaces horizontales en línea, hamburguesa

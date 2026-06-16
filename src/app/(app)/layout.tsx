@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Nav } from "@/components/nav";
+import { InstallBanner } from "@/components/install-banner";
 import { requireUser } from "@/auth/helpers";
 
 // Render dinámico: todo el área privada lee la sesión.
@@ -11,6 +12,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <InstallBanner />
       <Nav
         displayName={profile.nickname || profile.displayName}
         isAdmin={profile.isAdmin}
