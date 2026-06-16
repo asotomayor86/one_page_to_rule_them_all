@@ -1,20 +1,19 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
-import { db, games, userGames, type Game } from "@/db";
+import { asc, eq } from "drizzle-orm";
+import { db, games, type Game } from "@/db";
 
 /**
- * Juegos a los que un usuario tiene acceso (vía user_games) y que están activos.
- * Es lo que se muestra en el hub.
+ * Juegos visibles para un usuario en el hub: TODOS los que están activos. Un
+ * juego activo ("visible") es accesible para cualquier usuario autenticado, sin
+ * necesidad de un permiso por usuario. Se mantiene el parámetro por compatibilidad
+ * con las llamadas existentes (hub, salas, ligas).
  */
-export async function getGamesForUser(userId: string): Promise<Game[]> {
-  const filas = await db
-    .select({ game: games })
-    .from(userGames)
-    .innerJoin(games, eq(userGames.gameId, games.id))
-    .where(and(eq(userGames.userId, userId), eq(games.active, true)))
+export async function getGamesForUser(_userId: string): Promise<Game[]> {
+  return db
+    .select()
+    .from(games)
+    .where(eq(games.active, true))
     .orderBy(asc(games.name));
-
-  return filas.map((f) => f.game);
 }
 
 /** Todos los juegos del catálogo (para el panel de admin). */

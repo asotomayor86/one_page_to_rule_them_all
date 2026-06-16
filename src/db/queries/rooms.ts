@@ -10,7 +10,6 @@ import {
   profiles,
   roomPlayers,
   rooms,
-  userGames,
   type RoomStatus,
 } from "@/db";
 
@@ -374,15 +373,19 @@ export async function getLeagueWinsNeeded(
   return l?.winsNeeded ?? 1;
 }
 
-/** ¿Tiene el usuario acceso (user_games) a ese juego? */
+/**
+ * ¿Puede el usuario usar ese juego? Sí si el juego existe y está activo
+ * ("visible"). Los juegos activos están disponibles para cualquier usuario
+ * autenticado (no se filtra por user_games).
+ */
 export async function tieneAccesoAlJuego(
-  userId: string,
+  _userId: string,
   gameId: string,
 ): Promise<boolean> {
   const filas = await db
-    .select({ gameId: userGames.gameId })
-    .from(userGames)
-    .where(and(eq(userGames.userId, userId), eq(userGames.gameId, gameId)))
+    .select({ id: games.id })
+    .from(games)
+    .where(and(eq(games.id, gameId), eq(games.active, true)))
     .limit(1);
   return filas.length > 0;
 }

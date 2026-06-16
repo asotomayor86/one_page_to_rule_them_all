@@ -34,70 +34,7 @@ export default async function HubPage() {
         Hola, {profile.nickname || profile.displayName} 👋
       </SeccionTitulo>
 
-      {juegos.length === 0 ? (
-        <Card>
-          <p style={{ margin: 0, color: "var(--texto-suave)" }}>
-            Todavía no tienes ningún juego asignado. Pide a un administrador de
-            la familia que te dé acceso.
-          </p>
-        </Card>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gap: "0.9rem",
-            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-          }}
-        >
-          {juegos.map((juego) => (
-            <Card
-              key={juego.id}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.6rem",
-              }}
-            >
-              <div style={{ fontSize: "2rem", lineHeight: 1 }}>
-                {juego.icon || "🎮"}
-              </div>
-              <div style={{ fontWeight: 700 }}>{juego.name}</div>
-              {juego.description && (
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.85rem",
-                    color: "var(--texto-suave)",
-                    flex: 1,
-                  }}
-                >
-                  {juego.description}
-                </p>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
-
-      <SeccionTitulo>Competición familiar</SeccionTitulo>
-      <Card>
-        <p style={{ margin: "0 0 0.75rem", color: "var(--texto-suave)" }}>
-          Mira quién va ganando y revisa los enfrentamientos.
-        </p>
-        <Link
-          href="/estadisticas"
-          style={{
-            display: "inline-block",
-            padding: "0.5rem 0.9rem",
-            borderRadius: 8,
-            background: "var(--superficie-2)",
-            border: "1px solid var(--borde)",
-          }}
-        >
-          Ver estadísticas y ranking →
-        </Link>
-      </Card>
-
+      {/* 1) Tus invitaciones */}
       <SeccionTitulo>
         Tus invitaciones{" "}
         {totalPendientes > 0 && (
@@ -144,6 +81,73 @@ export default async function HubPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* 2) Competición familiar */}
+      <SeccionTitulo>Competición familiar</SeccionTitulo>
+      <Card>
+        <p style={{ margin: "0 0 0.75rem", color: "var(--texto-suave)" }}>
+          Mira quién va ganando y revisa los enfrentamientos.
+        </p>
+        <Link
+          href="/estadisticas"
+          style={{
+            display: "inline-block",
+            padding: "0.5rem 0.9rem",
+            borderRadius: 8,
+            background: "var(--superficie-2)",
+            border: "1px solid var(--borde)",
+          }}
+        >
+          Ver estadísticas y ranking →
+        </Link>
+      </Card>
+
+      {/* 3) Juegos disponibles */}
+      <SeccionTitulo>Juegos disponibles</SeccionTitulo>
+      {juegos.length === 0 ? (
+        <Card>
+          <p style={{ margin: 0, color: "var(--texto-suave)" }}>
+            Todavía no hay juegos disponibles. Un administrador puede darlos de
+            alta desde el panel de administración.
+          </p>
+        </Card>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gap: "0.9rem",
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+          }}
+        >
+          {juegos.map((juego) => (
+            <Card
+              key={juego.id}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.6rem",
+              }}
+            >
+              <div style={{ fontSize: "2rem", lineHeight: 1 }}>
+                {juego.icon || "🎮"}
+              </div>
+              <div style={{ fontWeight: 700 }}>{juego.name}</div>
+              {juego.description && (
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.85rem",
+                    color: "var(--texto-suave)",
+                    flex: 1,
+                  }}
+                >
+                  {juego.description}
+                </p>
+              )}
+            </Card>
+          ))}
+        </div>
       )}
     </>
   );
