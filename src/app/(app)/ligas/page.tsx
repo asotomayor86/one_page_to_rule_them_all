@@ -30,24 +30,25 @@ export default async function LigasPage() {
 
   return (
     <>
-      <SeccionTitulo>Crear liga</SeccionTitulo>
-      <Card>
-        <p
-          style={{
-            margin: "0 0 0.7rem",
-            color: "var(--texto-suave)",
-            fontSize: "0.9rem",
-          }}
-        >
-          Todos contra todos. Elige nombre, vueltas y jugadores: se genera una
-          sala por cada partido. Los resultados cuentan en Estadísticas.
-        </p>
-        <CreateLeagueForm
-          juegos={juegosCre}
-          perfiles={perfilesCre}
-          currentUserId={profile.id}
-        />
-      </Card>
+      <LeagueSection name="Crear liga" icon="➕">
+        <Card>
+          <p
+            style={{
+              margin: "0 0 0.7rem",
+              color: "var(--texto-suave)",
+              fontSize: "0.9rem",
+            }}
+          >
+            Todos contra todos. Elige nombre, vueltas y jugadores: se genera una
+            sala por cada partido. Los resultados cuentan en Estadísticas.
+          </p>
+          <CreateLeagueForm
+            juegos={juegosCre}
+            perfiles={perfilesCre}
+            currentUserId={profile.id}
+          />
+        </Card>
+      </LeagueSection>
 
       <SeccionTitulo>Ligas</SeccionTitulo>
       {ligas.length === 0 ? (

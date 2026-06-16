@@ -1,10 +1,5 @@
 import type { Torneo, CruceTorneo } from "@/db/queries/tournaments";
 
-function enlaceJuego(url: string, code: string): string {
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}sala=${code}`;
-}
-
 // Geometría del cuadro (px). Cada cruce de la ronda r ocupa una banda de alto
 // SLOT·2^r, así su tarjeta queda centrada entre las dos de la ronda anterior
 // (forma de pirámide). Con estas posiciones trazamos las líneas conectoras.
@@ -19,13 +14,7 @@ const LINEA = "rgba(155, 140, 255, 0.45)";
 type Linea = { left: number; top: number; width: number; height: number };
 
 /** Cuadro de un torneo en forma de pirámide, con líneas entre cruces. */
-export function TournamentBracket({
-  torneo,
-  currentUserId,
-}: {
-  torneo: Torneo;
-  currentUserId: string;
-}) {
+export function TournamentBracket({ torneo }: { torneo: Torneo }) {
   const rondasN = torneo.rondas.length;
   const round0 = torneo.bracketSize / 2;
   const totalH = SLOT * round0;
@@ -125,8 +114,6 @@ export function TournamentBracket({
                   <CruceCard
                     key={`${ronda.round}:${s}`}
                     cruce={c}
-                    gameUrl={torneo.game.url}
-                    currentUserId={currentUserId}
                     left={ronda.round * COL}
                     top={centroY(ronda.round, s) - CARD_H / 2 + HEADER}
                   />
@@ -142,23 +129,15 @@ export function TournamentBracket({
 
 function CruceCard({
   cruce,
-  gameUrl,
-  currentUserId,
   left,
   top,
 }: {
   cruce: CruceTorneo;
-  gameUrl: string;
-  currentUserId: string;
   left: number;
   top: number;
 }) {
   const jugado = !!cruce.winnerId;
   const completo = !!cruce.p1 && !!cruce.p2;
-  const soy =
-    currentUserId === cruce.p1?.userId || currentUserId === cruce.p2?.userId;
-  const abrible =
-    completo && !jugado && cruce.status === "open" && !!cruce.code && soy;
 
   return (
     <div
@@ -191,17 +170,6 @@ function CruceCard({
           <Etiqueta texto="🎟️ Pasa de ronda" />
         ) : jugado ? (
           <Etiqueta texto="✓ Jugado" color="var(--verde)" />
-        ) : abrible && cruce.code ? (
-          <a
-            href={enlaceJuego(gameUrl, cruce.code)}
-            style={{
-              color: "var(--acento)",
-              fontWeight: 700,
-              fontSize: "0.8rem",
-            }}
-          >
-            Jugar →
-          </a>
         ) : completo ? (
           <Etiqueta texto="En juego" />
         ) : (

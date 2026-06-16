@@ -26,25 +26,26 @@ export default async function TorneosPage() {
 
   return (
     <>
-      <SeccionTitulo>Crear torneo</SeccionTitulo>
-      <Card>
-        <p
-          style={{
-            margin: "0 0 0.7rem",
-            color: "var(--texto-suave)",
-            fontSize: "0.9rem",
-          }}
-        >
-          Eliminatorio a un partido. Elige juego, a cuántas victorias se juega cada
-          cruce y los jugadores (mínimo 4). El ganador de cada cruce avanza; con
-          menos jugadores que el cuadro, algunos pasan de ronda por sorteo.
-        </p>
-        <CreateTournamentForm
-          juegos={juegosCre}
-          perfiles={perfilesCre}
-          currentUserId={profile.id}
-        />
-      </Card>
+      <LeagueSection name="Crear torneo" icon="➕">
+        <Card>
+          <p
+            style={{
+              margin: "0 0 0.7rem",
+              color: "var(--texto-suave)",
+              fontSize: "0.9rem",
+            }}
+          >
+            Eliminatorio a un partido. Elige juego, a cuántas victorias se juega
+            cada cruce y los jugadores (mínimo 4). El ganador de cada cruce avanza;
+            con menos jugadores que el cuadro, algunos pasan de ronda por sorteo.
+          </p>
+          <CreateTournamentForm
+            juegos={juegosCre}
+            perfiles={perfilesCre}
+            currentUserId={profile.id}
+          />
+        </Card>
+      </LeagueSection>
 
       <SeccionTitulo>Torneos</SeccionTitulo>
       {torneos.length === 0 ? (
@@ -66,7 +67,7 @@ export default async function TorneosPage() {
                   : ""
             }`}
           >
-            <TournamentBracket torneo={t} currentUserId={profile.id} />
+            <TournamentBracket torneo={t} />
 
             <h3
               className="seccion-titulo"

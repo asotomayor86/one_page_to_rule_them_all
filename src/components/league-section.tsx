@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 export function LeagueSection({
   name,
   subtitle,
-  defaultOpen = true,
+  defaultOpen = false,
   icon = "🏆",
   children,
 }: {
@@ -31,7 +31,7 @@ export function LeagueSection({
           alignItems: "center",
           justifyContent: "space-between",
           gap: "0.5rem",
-          padding: "0.5rem 0.8rem",
+          padding: "0.55rem 0.8rem",
           borderRadius: 12,
           cursor: "pointer",
           color: "var(--texto)",
@@ -40,9 +40,28 @@ export function LeagueSection({
       >
         <span
           className="seccion-titulo"
-          style={{ fontSize: "1.05rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
+          style={{ fontSize: "1.05rem", display: "flex", alignItems: "center", gap: "0.6rem" }}
         >
-          <span style={{ color: "var(--texto-suave)" }}>{open ? "▾" : "▸"}</span>
+          <span
+            aria-hidden
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 30,
+              height: 30,
+              borderRadius: 9,
+              border: `1px solid ${open ? "var(--acento)" : "var(--borde)"}`,
+              background: open ? "var(--acento-fuerte)" : "var(--superficie-2)",
+              color: open ? "white" : "var(--texto)",
+              fontSize: "1.5rem",
+              lineHeight: 1,
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+          >
+            {open ? "−" : "+"}
+          </span>
           {icon} {name}
         </span>
         {subtitle && (
