@@ -23,6 +23,13 @@ const nextConfig: NextConfig = {
           source: "/assemble/:path*",
           destination: "https://assemble.gamehub.family/:path*",
         },
+        // Murcia Kingdom es Next.js (no una SPA): usa basePath="/murciakingdom",
+        // así que CONSERVAMOS el prefijo en el destino (sus assets viven en
+        // /murciakingdom/_next/...). Por eso no se reescribe como los de arriba.
+        {
+          source: "/murciakingdom/:path*",
+          destination: "https://murciakingdom.gamehub.family/murciakingdom/:path*",
+        },
       ],
       afterFiles: [],
       fallback: [],
