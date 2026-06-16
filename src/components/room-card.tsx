@@ -7,39 +7,70 @@ function enlaceJuego(url: string, code: string): string {
   return `${url}${sep}sala=${code}`;
 }
 
-/** Tarjeta compacta de una sala: jugadores, código y acción (abrir / jugado). */
+// Color según el origen del partido: sala suelta, liga o torneo. Sirve para
+// distinguir de un vistazo de dónde viene cada tarjeta en la portada del hub.
+const COLOR_INDIVIDUAL = "#9b8cff"; // lila
+const COLOR_LIGA = "#f5c451"; // dorado
+const COLOR_TORNEO = "#46c98b"; // verde
+
+function colorOrigen(sala: Sala): string {
+  if (sala.tournamentId) return COLOR_TORNEO;
+  if (sala.leagueId) return COLOR_LIGA;
+  return COLOR_INDIVIDUAL;
+}
+
+/**
+ * Tarjeta de un partido pendiente. SIEMPRE en 4 líneas (jugadores, juego, código,
+ * abrir juego) e idéntica en todos los sitios (portada, salas, ligas y torneos).
+ * El borde y el botón se tiñen según el origen (sala suelta / liga / torneo).
+ */
 export function RoomCard({
   sala,
   currentUserId,
   allowClose = false,
-  mostrarJuego = true,
 }: {
   sala: Sala;
   currentUserId: string;
   allowClose?: boolean;
-  mostrarJuego?: boolean;
 }) {
   const jugada = sala.status === "closed";
+  const color = colorOrigen(sala);
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: "0.4rem", padding: "0.6rem 0.75rem" }}>
+    <Card
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.4rem",
+        padding: "0.6rem 0.75rem",
+        borderLeft: `4px solid ${color}`,
+      }}
+    >
+      {/* 1) Jugadores */}
+      <strong style={{ fontSize: "0.95rem" }}>
+        {sala.jugadores.map((j) => j.nombre).join("  vs  ") || sala.game.name}
+      </strong>
+
+      {/* 2) Juego */}
+      <div style={{ fontSize: "0.78rem", color: "var(--texto-suave)" }}>
+        {(sala.game.icon || "🎮") + " " + sala.game.name}
+      </div>
+
+      {/* 3) Código */}
       <div
         style={{
+          fontSize: "0.78rem",
+          color: "var(--texto-suave)",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: "0.5rem",
-          flexWrap: "wrap",
+          gap: "0.4rem",
         }}
       >
-        <strong style={{ fontSize: "0.95rem" }}>
-          {sala.jugadores.map((j) => j.nombre).join("  vs  ") ||
-            (mostrarJuego ? sala.game.name : "Partido")}
-        </strong>
+        Código
         <span
           style={{
             fontFamily: "monospace",
-            fontSize: "1rem",
+            fontSize: "0.95rem",
             letterSpacing: "0.12em",
             color: jugada ? "var(--texto-suave)" : "var(--texto)",
             background: "var(--superficie-2)",
@@ -52,12 +83,7 @@ export function RoomCard({
         </span>
       </div>
 
-      {mostrarJuego && (
-        <div style={{ fontSize: "0.78rem", color: "var(--texto-suave)" }}>
-          {(sala.game.icon || "🎮") + " " + sala.game.name}
-        </div>
-      )}
-
+      {/* 4) Abrir juego */}
       <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
         {jugada ? (
           <span
@@ -77,9 +103,9 @@ export function RoomCard({
             style={{
               padding: "0.35rem 0.8rem",
               borderRadius: 7,
-              background: "var(--acento-fuerte)",
-              color: "white",
-              fontWeight: 600,
+              background: color,
+              color: "#15122b",
+              fontWeight: 700,
               fontSize: "0.85rem",
             }}
           >

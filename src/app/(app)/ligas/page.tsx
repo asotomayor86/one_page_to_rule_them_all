@@ -89,12 +89,7 @@ export default async function LigasPage() {
                 }}
               >
                 {liga.salas.map((s) => (
-                  <RoomCard
-                    key={s.id}
-                    sala={s}
-                    currentUserId={profile.id}
-                    mostrarJuego={false}
-                  />
+                  <RoomCard key={s.id} sala={s} currentUserId={profile.id} />
                 ))}
               </div>
             )}

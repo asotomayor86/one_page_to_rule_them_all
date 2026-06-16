@@ -1,18 +1,17 @@
 import Link from "next/link";
 import { requireUser } from "@/auth/helpers";
 import { getGamesForUser } from "@/db/queries/games";
-import { getRoomsForUser, getLeaguesForUser } from "@/db/queries/rooms";
+import {
+  getRoomsForUser,
+  getLeaguesForUser,
+  type Sala,
+} from "@/db/queries/rooms";
 import { getTournamentsForUser } from "@/db/queries/tournaments";
 import { Card, SeccionTitulo } from "@/components/ui";
 import { RoomCard } from "@/components/room-card";
 import { LeagueSection } from "@/components/league-section";
 
 export const dynamic = "force-dynamic";
-
-function enlaceJuego(url: string, code: string): string {
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}sala=${code}`;
-}
 
 export default async function HubPage() {
   const { profile } = await requireUser();
@@ -23,42 +22,19 @@ export default async function HubPage() {
     getTournamentsForUser(profile.id),
   ]);
 
-  // Partidos pendientes de liga: salas open en ligas donde el usuario juega.
-  const partidosLiga = ligas.flatMap((liga) =>
-    liga.salas
-      .filter(
-        (s) =>
-          s.status === "open" &&
-          s.jugadores.some((j) => j.userId === profile.id),
-      )
-      .map((sala) => ({ ligaName: liga.name, sala })),
-  );
+  const soyJugador = (s: Sala) =>
+    s.status === "open" && s.jugadores.some((j) => j.userId === profile.id);
 
-  // Cruces de torneo pendientes: mi cruce con sala abierta y sin ganador aún.
-  const partidosTorneo = torneos.flatMap((t) =>
-    t.rondas.flatMap((r) =>
-      r.cruces
-        .filter(
-          (c) =>
-            c.status === "open" &&
-            !c.winnerId &&
-            !!c.code &&
-            (c.p1?.userId === profile.id || c.p2?.userId === profile.id),
-        )
-        .map((c) => ({
-          torneoName: t.name,
-          ronda: r.nombre,
-          game: t.game,
-          code: c.code as string,
-          rival:
-            (c.p1?.userId === profile.id ? c.p2?.nombre : c.p1?.nombre) ??
-            "rival",
-        })),
-    ),
-  );
+  // Todas mis partidas pendientes en una sola lista: salas sueltas + partidos de
+  // liga + cruces de torneo. Cada sala lleva su leagueId/tournamentId, así la
+  // tarjeta se colorea sola según su origen.
+  const pendientes: Sala[] = [
+    ...salas,
+    ...ligas.flatMap((l) => l.salas.filter(soyJugador)),
+    ...torneos.flatMap((t) => t.salas.filter(soyJugador)),
+  ];
 
-  const totalPendientes =
-    salas.length + partidosLiga.length + partidosTorneo.length;
+  const totalPendientes = pendientes.length;
 
   return (
     <>
@@ -86,66 +62,22 @@ export default async function HubPage() {
           defaultOpen={false}
           subtitle={`${totalPendientes} pendiente${totalPendientes !== 1 ? "s" : ""}`}
         >
-          {salas.length > 0 && (
-            <div style={{ display: "grid", gap: "0.6rem", marginBottom: "0.9rem" }}>
-              {salas.map((s) => (
-                <RoomCard key={s.id} sala={s} currentUserId={profile.id} />
-              ))}
-            </div>
-          )}
-          {partidosLiga.length > 0 && (
-            <div style={{ display: "grid", gap: "0.6rem" }}>
-              {partidosLiga.map(({ ligaName, sala }) => (
-                <div key={sala.id}>
-                  <div
-                    style={{
-                      fontSize: "0.78rem",
-                      color: "var(--texto-suave)",
-                      marginBottom: "0.25rem",
-                      paddingLeft: "0.1rem",
-                    }}
-                  >
-                    🏆 Liga: {ligaName}
-                  </div>
-                  <RoomCard sala={sala} currentUserId={profile.id} />
-                </div>
-              ))}
-            </div>
-          )}
-          {partidosTorneo.length > 0 && (
-            <div style={{ display: "grid", gap: "0.6rem", marginTop: "0.9rem" }}>
-              {partidosTorneo.map((p) => (
-                <Card
-                  key={p.code}
-                  style={{ display: "flex", flexDirection: "column", gap: "0.4rem", padding: "0.6rem 0.75rem" }}
-                >
-                  <div style={{ fontSize: "0.78rem", color: "var(--texto-suave)" }}>
-                    🏆 Torneo: {p.torneoName} · {p.ronda}
-                  </div>
-                  <strong style={{ fontSize: "0.95rem" }}>
-                    {profile.nickname || profile.displayName} vs {p.rival}
-                  </strong>
-                  <div style={{ fontSize: "0.78rem", color: "var(--texto-suave)" }}>
-                    {(p.game.icon || "🎮") + " " + p.game.name}
-                  </div>
-                  <a
-                    href={enlaceJuego(p.game.url, p.code)}
-                    style={{
-                      alignSelf: "flex-start",
-                      padding: "0.35rem 0.8rem",
-                      borderRadius: 7,
-                      background: "var(--acento-fuerte)",
-                      color: "white",
-                      fontWeight: 600,
-                      fontSize: "0.85rem",
-                    }}
-                  >
-                    Abrir juego →
-                  </a>
-                </Card>
-              ))}
-            </div>
-          )}
+          <div
+            style={{
+              display: "grid",
+              gap: "0.6rem",
+              gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+            }}
+          >
+            {pendientes.map((s) => (
+              <RoomCard key={s.id} sala={s} currentUserId={profile.id} />
+            ))}
+          </div>
+          <p style={{ margin: "0.2rem 0 0", fontSize: "0.78rem", color: "var(--texto-suave)" }}>
+            <span style={{ color: "#9b8cff" }}>■</span> Sala suelta ·{" "}
+            <span style={{ color: "#f5c451" }}>■</span> Liga ·{" "}
+            <span style={{ color: "#46c98b" }}>■</span> Torneo
+          </p>
         </LeagueSection>
       )}
 
