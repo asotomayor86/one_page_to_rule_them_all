@@ -25,10 +25,11 @@ const nextConfig: NextConfig = {
         },
         // Murcia Kingdom es Next.js (no una SPA): usa basePath="/murciakingdom",
         // así que CONSERVAMOS el prefijo en el destino (sus assets viven en
-        // /murciakingdom/_next/...). Por eso no se reescribe como los de arriba.
+        // /murciakingdom/_next/...). Apuntamos a la URL canónica del proyecto en
+        // Vercel (no a un subdominio propio, que habría que enganchar aparte).
         {
           source: "/murciakingdom/:path*",
-          destination: "https://murciakingdom.gamehub.family/murciakingdom/:path*",
+          destination: "https://murcia-kingdom.vercel.app/murciakingdom/:path*",
         },
       ],
       afterFiles: [],
