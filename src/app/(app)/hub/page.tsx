@@ -5,6 +5,7 @@ import { getRoomsForUser, getLeaguesForUser } from "@/db/queries/rooms";
 import { getTournamentsForUser } from "@/db/queries/tournaments";
 import { Card, SeccionTitulo } from "@/components/ui";
 import { RoomCard } from "@/components/room-card";
+import { LeagueSection } from "@/components/league-section";
 
 export const dynamic = "force-dynamic";
 
@@ -65,27 +66,26 @@ export default async function HubPage() {
         Hola, {profile.nickname || profile.displayName} 👋
       </SeccionTitulo>
 
-      {/* 1) Tus invitaciones */}
-      <SeccionTitulo>
-        Tus invitaciones{" "}
-        {totalPendientes > 0 && (
-          <span style={{ fontSize: "0.85rem", color: "var(--texto-suave)" }}>
-            ({totalPendientes} pendiente{totalPendientes !== 1 ? "s" : ""})
-          </span>
-        )}
-      </SeccionTitulo>
-
+      {/* 1) Tus invitaciones (plegado por defecto; al desplegar, todas las salas) */}
       {totalPendientes === 0 ? (
-        <Card>
-          <p style={{ margin: 0, color: "var(--texto-suave)" }}>
-            No tienes salas ni partidos pendientes. Para jugar, alguien tiene
-            que invitarte desde <Link href="/salas">Salas</Link>, una{" "}
-            <Link href="/ligas">Liga</Link> o un{" "}
-            <Link href="/torneos">Torneo</Link>.
-          </p>
-        </Card>
-      ) : (
         <>
+          <SeccionTitulo>Tus invitaciones</SeccionTitulo>
+          <Card>
+            <p style={{ margin: 0, color: "var(--texto-suave)" }}>
+              No tienes salas ni partidos pendientes. Para jugar, alguien tiene
+              que invitarte desde <Link href="/salas">Salas</Link>, una{" "}
+              <Link href="/ligas">Liga</Link> o un{" "}
+              <Link href="/torneos">Torneo</Link>.
+            </p>
+          </Card>
+        </>
+      ) : (
+        <LeagueSection
+          name="Tus invitaciones"
+          icon="📨"
+          defaultOpen={false}
+          subtitle={`${totalPendientes} pendiente${totalPendientes !== 1 ? "s" : ""}`}
+        >
           {salas.length > 0 && (
             <div style={{ display: "grid", gap: "0.6rem", marginBottom: "0.9rem" }}>
               {salas.map((s) => (
@@ -146,7 +146,7 @@ export default async function HubPage() {
               ))}
             </div>
           )}
-        </>
+        </LeagueSection>
       )}
 
       {/* 2) Competición familiar */}

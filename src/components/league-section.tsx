@@ -2,16 +2,18 @@
 
 import { useState, type ReactNode } from "react";
 
-/** Sección de liga plegable: cabecera clicable que muestra/oculta el contenido. */
+/** Sección plegable: cabecera clicable que muestra/oculta el contenido. */
 export function LeagueSection({
   name,
   subtitle,
   defaultOpen = true,
+  icon = "🏆",
   children,
 }: {
   name: string;
   subtitle?: string;
   defaultOpen?: boolean;
+  icon?: string;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -41,7 +43,7 @@ export function LeagueSection({
           style={{ fontSize: "1.05rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
         >
           <span style={{ color: "var(--texto-suave)" }}>{open ? "▾" : "▸"}</span>
-          🏆 {name}
+          {icon} {name}
         </span>
         {subtitle && (
           <span style={{ fontSize: "0.78rem", color: "var(--texto-suave)" }}>
