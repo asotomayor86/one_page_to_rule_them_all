@@ -24,6 +24,7 @@ export const config = {
     "/hub/:path*",
     "/salas/:path*",
     "/ligas/:path*",
+    "/torneos/:path*",
     "/estadisticas/:path*",
     "/admin/:path*",
     "/perfil/:path*",

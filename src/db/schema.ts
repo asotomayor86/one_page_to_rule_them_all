@@ -17,6 +17,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 import { authUid, authenticatedRole, crudPolicy } from "drizzle-orm/neon";
@@ -236,6 +237,10 @@ export const rooms = pgTable("rooms", {
   leagueId: uuid("league_id").references(() => leagues.id, {
     onDelete: "cascade",
   }),
+  // Si la sala es un cruce de un torneo, lo enlaza (y entonces no caduca).
+  tournamentId: uuid("tournament_id").references(() => tournaments.id, {
+    onDelete: "cascade",
+  }),
   status: roomStatus("status").notNull().default("open"),
   // Best-of-N: el partido se juega hasta que alguien llegue a `wins_needed`
   // victorias. 1 = una sola partida. Para salas de liga, se hereda el valor
@@ -262,6 +267,80 @@ export const roomPlayers = pgTable(
   (t) => [primaryKey({ columns: [t.roomId, t.userId] })],
 );
 
+/**
+ * Torneo (eliminatorio a un partido por cruce). Al crearlo se monta un cuadro de
+ * `bracket_size` (potencia de 2 ≥ nº de jugadores, mínimo 4). Cada cruce se juega
+ * al mejor de `wins_needed`; el ganador avanza a la ronda siguiente.
+ */
+export const tournaments = pgTable("tournaments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  gameId: uuid("game_id")
+    .notNull()
+    .references(() => games.id, { onDelete: "cascade" }),
+  winsNeeded: integer("wins_needed").notNull().default(1),
+  // Tamaño del cuadro (4, 8, 16, …): potencia de 2 ≥ nº de jugadores.
+  bracketSize: integer("bracket_size").notNull(),
+  status: roomStatus("status").notNull().default("open"),
+  // Campeón (ganador de la final), null mientras el torneo está en juego.
+  championId: text("champion_id").references(() => profiles.id, {
+    onDelete: "set null",
+  }),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Jugadores apuntados a un torneo (con su posición de sorteo). */
+export const tournamentPlayers = pgTable(
+  "tournament_players",
+  {
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    seed: integer("seed").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.tournamentId, t.userId] })],
+);
+
+/**
+ * Un cruce del cuadro. `round` 0 = primera ronda; `slot` = posición dentro de la
+ * ronda. El ganador del cruce (round r, slot s) pasa al cruce (round r+1,
+ * slot floor(s/2)) ocupando player1 si s es par o player2 si es impar. `roomId`
+ * enlaza la sala donde se juega (se crea cuando se conocen los dos jugadores).
+ */
+export const tournamentMatches = pgTable(
+  "tournament_matches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    round: integer("round").notNull(),
+    slot: integer("slot").notNull(),
+    player1Id: text("player1_id").references(() => profiles.id, {
+      onDelete: "set null",
+    }),
+    player2Id: text("player2_id").references(() => profiles.id, {
+      onDelete: "set null",
+    }),
+    winnerId: text("winner_id").references(() => profiles.id, {
+      onDelete: "set null",
+    }),
+    roomId: uuid("room_id").references(() => rooms.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique().on(t.tournamentId, t.round, t.slot)],
+);
+
 // --- Tipos inferidos (para usar en la app) -----------------------------------
 
 export type MatchKind = (typeof matchKind.enumValues)[number];
@@ -276,4 +355,7 @@ export type Room = typeof rooms.$inferSelect;
 export type RoomPlayer = typeof roomPlayers.$inferSelect;
 export type League = typeof leagues.$inferSelect;
 export type LeaguePlayer = typeof leaguePlayers.$inferSelect;
+export type Tournament = typeof tournaments.$inferSelect;
+export type TournamentPlayer = typeof tournamentPlayers.$inferSelect;
+export type TournamentMatch = typeof tournamentMatches.$inferSelect;
 export type RoomStatus = (typeof roomStatus.enumValues)[number];

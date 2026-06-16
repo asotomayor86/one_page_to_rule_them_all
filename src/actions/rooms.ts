@@ -11,9 +11,17 @@ import {
   leagues,
   roomPlayers,
   rooms,
+  tournamentMatches,
+  tournamentPlayers,
+  tournaments,
 } from "@/db";
 import { getCurrentUser, requireAdmin } from "@/auth/helpers";
 import { tieneAccesoAlJuego } from "@/db/queries/rooms";
+import {
+  crearSalaCruce,
+  numRondas,
+  tamanoCuadro,
+} from "@/db/queries/tournaments";
 
 export type ResultadoSala = { ok: boolean; mensaje?: string; code?: string };
 
@@ -274,6 +282,183 @@ export async function crearLiga(
   }
 }
 
+// --- Torneos (eliminatorio) -------------------------------------------------
+
+const esquemaTorneo = z.object({
+  gameId: z.string().uuid("Elige un juego"),
+  nombre: z.string().trim().min(2, "Ponle nombre al torneo").max(60),
+  victorias: z.coerce
+    .number()
+    .int()
+    .min(1, "Mínimo 1 victoria")
+    .max(9, "Máximo 9 victorias"),
+  jugadores: z
+    .array(z.string().min(1))
+    .min(4, "Un torneo necesita al menos 4 jugadores"),
+});
+
+/** Baraja un array (Fisher-Yates con aleatoriedad criptográfica). */
+function barajar<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Crea un torneo eliminatorio. Monta un cuadro de tamaño potencia de 2 (≥ nº de
+ * jugadores, mínimo 4). Si sobran huecos respecto a la potencia de 2, esos
+ * jugadores reciben un "bye" (pasan de ronda automáticamente). Crea las salas de
+ * los cruces que ya tienen a sus dos jugadores. Cada cruce se juega al mejor de
+ * `victorias`; los ganadores los hace avanzar el endpoint de resultado.
+ */
+export async function crearTorneo(
+  _prev: ResultadoSala,
+  formData: FormData,
+): Promise<ResultadoSala> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false, mensaje: "Tu sesión ha caducado. Recarga la página." };
+  }
+
+  let jugadoresRaw: unknown = [];
+  try {
+    jugadoresRaw = JSON.parse(String(formData.get("jugadores") ?? "[]"));
+  } catch {
+    return { ok: false, mensaje: "Lista de jugadores incorrecta" };
+  }
+
+  const parsed = esquemaTorneo.safeParse({
+    gameId: formData.get("gameId"),
+    nombre: formData.get("nombre"),
+    victorias: formData.get("victorias"),
+    jugadores: jugadoresRaw,
+  });
+  if (!parsed.success) {
+    return { ok: false, mensaje: parsed.error.issues[0]?.message };
+  }
+  const { gameId, nombre, victorias } = parsed.data;
+  const jugadores = [...new Set(parsed.data.jugadores)];
+  if (jugadores.length < 4) {
+    return { ok: false, mensaje: "Un torneo necesita al menos 4 jugadores." };
+  }
+
+  if (!(await tieneAccesoAlJuego(user.id, gameId))) {
+    return { ok: false, mensaje: "No tienes acceso a ese juego." };
+  }
+  // Cada cruce es 1v1; el juego debe admitir 2 jugadores.
+  const [juego] = await db
+    .select({ maxPlayers: games.maxPlayers })
+    .from(games)
+    .where(eq(games.id, gameId))
+    .limit(1);
+  if (juego?.maxPlayers != null && juego.maxPlayers < 2) {
+    return { ok: false, mensaje: "Este juego no admite partidos de 2 jugadores." };
+  }
+
+  const n = jugadores.length;
+  const B = tamanoCuadro(n);
+  const rondas = numRondas(B);
+  const sorteo = barajar(jugadores);
+
+  // Cuadro en memoria: cuadro[r][s] = { p1, p2, winner }.
+  type Celda = { p1: string | null; p2: string | null; winner: string | null };
+  const cuadro: Celda[][] = [];
+  for (let r = 0; r < rondas; r++) {
+    const m = B / 2 ** (r + 1);
+    cuadro.push(Array.from({ length: m }, () => ({ p1: null, p2: null, winner: null })));
+  }
+
+  // Primera ronda: los primeros (B-n) cruces son "byes" (1 jugador); el resto, 2.
+  const matches0 = B / 2;
+  const byes = B - n;
+  let idx = 0;
+  for (let s = 0; s < matches0; s++) {
+    cuadro[0][s].p1 = sorteo[idx++];
+    if (s >= byes) cuadro[0][s].p2 = sorteo[idx++];
+  }
+
+  // Resuelve los byes: el jugador solo pasa a la 2ª ronda automáticamente.
+  if (rondas > 1) {
+    for (let s = 0; s < matches0; s++) {
+      const c = cuadro[0][s];
+      if (c.p1 && !c.p2) {
+        c.winner = c.p1;
+        const ns = Math.floor(s / 2);
+        if (s % 2 === 0) cuadro[1][ns].p1 = c.p1;
+        else cuadro[1][ns].p2 = c.p1;
+      }
+    }
+  }
+
+  try {
+    const [torneo] = await db
+      .insert(tournaments)
+      .values({
+        name: nombre,
+        gameId,
+        winsNeeded: victorias,
+        bracketSize: B,
+        createdBy: user.id,
+      })
+      .returning({ id: tournaments.id });
+
+    await db
+      .insert(tournamentPlayers)
+      .values(sorteo.map((uid, i) => ({ tournamentId: torneo.id, userId: uid, seed: i })));
+
+    // Inserta todos los cruces del cuadro.
+    const valoresCruces = cuadro.flatMap((ronda, r) =>
+      ronda.map((c, s) => ({
+        tournamentId: torneo.id,
+        round: r,
+        slot: s,
+        player1Id: c.p1,
+        player2Id: c.p2,
+        winnerId: c.winner,
+      })),
+    );
+    const crucesIns = await db
+      .insert(tournamentMatches)
+      .values(valoresCruces)
+      .returning({ id: tournamentMatches.id, round: tournamentMatches.round, slot: tournamentMatches.slot });
+    const idPorRS = new Map(crucesIns.map((c) => [`${c.round}:${c.slot}`, c.id]));
+
+    // Crea las salas de los cruces ya completos (los 2 jugadores y sin ganador).
+    for (let r = 0; r < rondas; r++) {
+      for (let s = 0; s < cuadro[r].length; s++) {
+        const c = cuadro[r][s];
+        if (c.p1 && c.p2 && !c.winner) {
+          const salaId = await crearSalaCruce({
+            tournamentId: torneo.id,
+            gameId,
+            winsNeeded: victorias,
+            createdBy: user.id,
+            player1: c.p1,
+            player2: c.p2,
+          });
+          await db
+            .update(tournamentMatches)
+            .set({ roomId: salaId })
+            .where(eq(tournamentMatches.id, idPorRS.get(`${r}:${s}`)!));
+        }
+      }
+    }
+
+    revalidatePath("/torneos");
+    revalidatePath("/hub");
+    return {
+      ok: true,
+      mensaje: `Torneo «${nombre}» creado (cuadro de ${B}${byes > 0 ? `, ${byes} bye(s)` : ""}).`,
+    };
+  } catch (e) {
+    console.error("crearTorneo error:", e);
+    return { ok: false, mensaje: "No se pudo crear el torneo, inténtalo de nuevo." };
+  }
+}
+
 /** Cierra una sala (solo el creador). */
 export async function cerrarSala(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
@@ -337,4 +522,35 @@ export async function eliminarLigaAdmin(formData: FormData): Promise<void> {
 
   revalidatePath("/admin/salas");
   revalidatePath("/ligas");
+}
+
+/** Cierra un torneo (admin): cierra todas sus salas. Conserva el cuadro. */
+export async function cerrarTorneoAdmin(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  if (!tournamentId) return;
+
+  await db
+    .update(rooms)
+    .set({ status: "closed" })
+    .where(eq(rooms.tournamentId, tournamentId));
+  await db
+    .update(tournaments)
+    .set({ status: "closed" })
+    .where(eq(tournaments.id, tournamentId));
+
+  revalidatePath("/admin/salas");
+  revalidatePath("/torneos");
+}
+
+/** Elimina un torneo (admin) y todo su cuadro y salas (cascada). */
+export async function eliminarTorneoAdmin(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const tournamentId = String(formData.get("tournamentId") ?? "");
+  if (!tournamentId) return;
+
+  await db.delete(tournaments).where(eq(tournaments.id, tournamentId));
+
+  revalidatePath("/admin/salas");
+  revalidatePath("/torneos");
 }

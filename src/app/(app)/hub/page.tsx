@@ -2,17 +2,24 @@ import Link from "next/link";
 import { requireUser } from "@/auth/helpers";
 import { getGamesForUser } from "@/db/queries/games";
 import { getRoomsForUser, getLeaguesForUser } from "@/db/queries/rooms";
+import { getTournamentsForUser } from "@/db/queries/tournaments";
 import { Card, SeccionTitulo } from "@/components/ui";
 import { RoomCard } from "@/components/room-card";
 
 export const dynamic = "force-dynamic";
 
+function enlaceJuego(url: string, code: string): string {
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}sala=${code}`;
+}
+
 export default async function HubPage() {
   const { profile } = await requireUser();
-  const [juegos, salas, ligas] = await Promise.all([
+  const [juegos, salas, ligas, torneos] = await Promise.all([
     getGamesForUser(profile.id),
     getRoomsForUser(profile.id),
     getLeaguesForUser(profile.id),
+    getTournamentsForUser(profile.id),
   ]);
 
   // Partidos pendientes de liga: salas open en ligas donde el usuario juega.
@@ -26,7 +33,31 @@ export default async function HubPage() {
       .map((sala) => ({ ligaName: liga.name, sala })),
   );
 
-  const totalPendientes = salas.length + partidosLiga.length;
+  // Cruces de torneo pendientes: mi cruce con sala abierta y sin ganador aún.
+  const partidosTorneo = torneos.flatMap((t) =>
+    t.rondas.flatMap((r) =>
+      r.cruces
+        .filter(
+          (c) =>
+            c.status === "open" &&
+            !c.winnerId &&
+            !!c.code &&
+            (c.p1?.userId === profile.id || c.p2?.userId === profile.id),
+        )
+        .map((c) => ({
+          torneoName: t.name,
+          ronda: r.nombre,
+          game: t.game,
+          code: c.code as string,
+          rival:
+            (c.p1?.userId === profile.id ? c.p2?.nombre : c.p1?.nombre) ??
+            "rival",
+        })),
+    ),
+  );
+
+  const totalPendientes =
+    salas.length + partidosLiga.length + partidosTorneo.length;
 
   return (
     <>
@@ -48,8 +79,9 @@ export default async function HubPage() {
         <Card>
           <p style={{ margin: 0, color: "var(--texto-suave)" }}>
             No tienes salas ni partidos pendientes. Para jugar, alguien tiene
-            que invitarte desde <Link href="/salas">Salas</Link> o desde una{" "}
-            <Link href="/ligas">Liga</Link>.
+            que invitarte desde <Link href="/salas">Salas</Link>, una{" "}
+            <Link href="/ligas">Liga</Link> o un{" "}
+            <Link href="/torneos">Torneo</Link>.
           </p>
         </Card>
       ) : (
@@ -77,6 +109,40 @@ export default async function HubPage() {
                   </div>
                   <RoomCard sala={sala} currentUserId={profile.id} />
                 </div>
+              ))}
+            </div>
+          )}
+          {partidosTorneo.length > 0 && (
+            <div style={{ display: "grid", gap: "0.6rem", marginTop: "0.9rem" }}>
+              {partidosTorneo.map((p) => (
+                <Card
+                  key={p.code}
+                  style={{ display: "flex", flexDirection: "column", gap: "0.4rem", padding: "0.6rem 0.75rem" }}
+                >
+                  <div style={{ fontSize: "0.78rem", color: "var(--texto-suave)" }}>
+                    🏆 Torneo: {p.torneoName} · {p.ronda}
+                  </div>
+                  <strong style={{ fontSize: "0.95rem" }}>
+                    {profile.nickname || profile.displayName} vs {p.rival}
+                  </strong>
+                  <div style={{ fontSize: "0.78rem", color: "var(--texto-suave)" }}>
+                    {(p.game.icon || "🎮") + " " + p.game.name}
+                  </div>
+                  <a
+                    href={enlaceJuego(p.game.url, p.code)}
+                    style={{
+                      alignSelf: "flex-start",
+                      padding: "0.35rem 0.8rem",
+                      borderRadius: 7,
+                      background: "var(--acento-fuerte)",
+                      color: "white",
+                      fontWeight: 600,
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    Abrir juego →
+                  </a>
+                </Card>
               ))}
             </div>
           )}

@@ -27,6 +27,7 @@ export type Sala = {
   expiresAt: Date | null;
   createdBy: string;
   leagueId: string | null;
+  tournamentId: string | null;
   winsNeeded: number;
   game: { id: string; slug: string; name: string; url: string; icon: string | null };
   jugadores: SalaJugador[];
@@ -42,6 +43,7 @@ async function montarSalas(
     expiresAt: Date | null;
     createdBy: string;
     leagueId: string | null;
+    tournamentId: string | null;
     winsNeeded: number;
     gameId: string;
     slug: string;
@@ -84,6 +86,7 @@ async function montarSalas(
     expiresAt: s.expiresAt,
     createdBy: s.createdBy,
     leagueId: s.leagueId,
+    tournamentId: s.tournamentId,
     winsNeeded: s.winsNeeded,
     game: {
       id: s.gameId,
@@ -104,6 +107,7 @@ const seleccionSala = {
   expiresAt: rooms.expiresAt,
   createdBy: rooms.createdBy,
   leagueId: rooms.leagueId,
+  tournamentId: rooms.tournamentId,
   winsNeeded: rooms.winsNeeded,
   gameId: games.id,
   slug: games.slug,
@@ -145,6 +149,7 @@ export async function getRoomsForUser(userId: string): Promise<Sala[]> {
   const propias = filas.filter(
     (s) =>
       s.leagueId === null &&
+      s.tournamentId === null &&
       (s.createdBy === userId || idsJugador.includes(s.id)),
   );
   return montarSalas(propias);

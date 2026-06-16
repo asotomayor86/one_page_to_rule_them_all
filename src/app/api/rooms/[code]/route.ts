@@ -40,9 +40,9 @@ export async function GET(
 
   // A cuántas victorias se juega (best-of-N). El juego reinicia la partida
   // hasta que alguien llegue a `winsNeeded` y entonces devuelve a todos al hub.
-  // Para salas sueltas el creador lo elige; para salas de liga se hereda de
-  // la liga al crearlas.
-  const league = sala.leagueId != null;
+  // `league` marca un partido "gestionado" (liga o torneo): el juego lo juega
+  // como serie best-of-N y devuelve al hub al terminar.
+  const league = sala.leagueId != null || sala.tournamentId != null;
 
   return NextResponse.json(
     {

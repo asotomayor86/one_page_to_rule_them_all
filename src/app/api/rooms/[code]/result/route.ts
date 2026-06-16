@@ -16,6 +16,7 @@ import {
   roomPlayers,
   rooms,
 } from "@/db";
+import { avanzarTorneo } from "@/db/queries/tournaments";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -88,6 +89,7 @@ export async function POST(
       gameId: rooms.gameId,
       status: rooms.status,
       leagueId: rooms.leagueId,
+      tournamentId: rooms.tournamentId,
     })
     .from(rooms)
     .where(eq(rooms.code, code.trim().toUpperCase()))
@@ -146,12 +148,28 @@ export async function POST(
     //    (true al terminar la serie best-of-N, false en partidas intermedias).
     //  - Si NO envía el flag (juegos viejos), nos quedamos con el
     //    comportamiento histórico: cerrar solo cuando es partido de liga.
-    const cerrarSala = closeRoom === undefined ? sala.leagueId !== null : closeRoom;
+    const cerrarSala =
+      closeRoom === undefined
+        ? sala.leagueId !== null || sala.tournamentId !== null
+        : closeRoom;
     if (cerrarSala) {
       await db
         .update(rooms)
         .set({ status: "closed" })
         .where(eq(rooms.id, sala.id));
+
+      // Si es un cruce de torneo, hace avanzar al ganador por el cuadro (y crea
+      // la sala de la ronda siguiente cuando ese cruce queda completo).
+      if (sala.tournamentId) {
+        const ganador = results.find((r) => r.result === "win")?.userId;
+        if (ganador) {
+          try {
+            await avanzarTorneo(sala.id, ganador);
+          } catch (e) {
+            console.error("avanzarTorneo error:", e);
+          }
+        }
+      }
     }
 
     return NextResponse.json(

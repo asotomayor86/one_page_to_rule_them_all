@@ -14,6 +14,7 @@ const enlaces = [
   { href: "/hub", label: "Hub" },
   { href: "/salas", label: "Salas" },
   { href: "/ligas", label: "Ligas" },
+  { href: "/torneos", label: "Torneos" },
   { href: "/estadisticas", label: "Estadísticas" },
   { href: "/perfil", label: "Perfil" },
 ];

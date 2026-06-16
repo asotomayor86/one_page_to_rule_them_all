@@ -57,6 +57,13 @@
       "when": 1781462833198,
       "tag": "0007_strange_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781645620808,
+      "tag": "0008_slimy_hiroim",
+      "breakpoints": true
     }
   ]
 }
