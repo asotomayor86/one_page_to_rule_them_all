@@ -41,8 +41,8 @@ export function RoomCard({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "0.4rem",
-        padding: "0.6rem 0.75rem",
+        gap: "0.25rem",
+        padding: "0.5rem 0.7rem",
         borderLeft: `4px solid ${color}`,
       }}
     >
@@ -56,26 +56,8 @@ export function RoomCard({
         {(sala.game.icon || "🎮") + " " + sala.game.name}
       </div>
 
-      {/* 3) Código (sin etiqueta, fuente pequeña) */}
-      <div>
-        <span
-          style={{
-            fontFamily: "monospace",
-            fontSize: "0.62rem",
-            letterSpacing: "0.1em",
-            color: jugada ? "var(--texto-suave)" : "var(--texto)",
-            background: "var(--superficie-2)",
-            border: "1px solid var(--borde)",
-            borderRadius: 6,
-            padding: "0.02rem 0.4rem",
-          }}
-        >
-          {sala.code}
-        </span>
-      </div>
-
-      {/* 4) Abrir juego */}
-      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
+      {/* 3) Abrir juego (con el código de la sala) */}
+      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.1rem" }}>
         {jugada ? (
           <span
             style={{
@@ -98,9 +80,11 @@ export function RoomCard({
               color: "#15122b",
               fontWeight: 700,
               fontSize: "0.85rem",
+              fontFamily: "monospace",
+              letterSpacing: "0.08em",
             }}
           >
-            Abrir juego →
+            {sala.code} →
           </a>
         )}
         {allowClose && !jugada && sala.createdBy === currentUserId && (
