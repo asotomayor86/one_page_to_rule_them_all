@@ -4,6 +4,7 @@ import { getTournamentsForUser } from "@/db/queries/tournaments";
 import { listarPerfiles } from "@/db/queries/admin";
 import { CreateTournamentForm } from "@/components/create-tournament-form";
 import { TournamentBracket } from "@/components/tournament-bracket";
+import { RoomCard } from "@/components/room-card";
 import { LeagueSection } from "@/components/league-section";
 import { Card, SeccionTitulo } from "@/components/ui";
 
@@ -66,6 +67,47 @@ export default async function TorneosPage() {
             }`}
           >
             <TournamentBracket torneo={t} currentUserId={profile.id} />
+
+            <h3
+              className="seccion-titulo"
+              style={{
+                margin: "0.6rem 0 0",
+                fontSize: "0.9rem",
+                color: "var(--texto-suave)",
+              }}
+            >
+              Partidos pendientes
+            </h3>
+            {t.salas.length === 0 ? (
+              <p
+                style={{
+                  margin: "0.3rem 0 0",
+                  fontSize: "0.85rem",
+                  color: "var(--texto-suave)",
+                }}
+              >
+                {t.champion
+                  ? "Torneo terminado."
+                  : "No hay partidos listos ahora mismo."}
+              </p>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gap: "0.6rem",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                }}
+              >
+                {t.salas.map((s) => (
+                  <RoomCard
+                    key={s.id}
+                    sala={s}
+                    currentUserId={profile.id}
+                    mostrarJuego={false}
+                  />
+                ))}
+              </div>
+            )}
           </LeagueSection>
         ))
       )}

@@ -12,6 +12,7 @@ import {
   tournaments,
   type RoomStatus,
 } from "@/db";
+import { getSalasDeTorneos, type Sala } from "./rooms";
 
 // --- Helpers del cuadro (puros) ---------------------------------------------
 
@@ -201,6 +202,8 @@ export type Torneo = {
   champion: { userId: string; nombre: string } | null;
   jugadores: { userId: string; nombre: string }[];
   rondas: RondaTorneo[];
+  // Salas abiertas del torneo (partidos pendientes), para listarlas bajo el cuadro.
+  salas: Sala[];
 };
 
 /** Torneos en los que participa el usuario o que ha creado, con su cuadro. */
@@ -285,6 +288,16 @@ export async function getTournamentsForUser(userId: string): Promise<Torneo[]> {
     crucesPorTorneo.set(c.tournamentId, arr);
   }
 
+  // Salas abiertas (partidos pendientes) agrupadas por torneo.
+  const salasAbiertas = await getSalasDeTorneos(ids);
+  const salasPorTorneo = new Map<string, Sala[]>();
+  for (const s of salasAbiertas) {
+    if (!s.tournamentId) continue;
+    const arr = salasPorTorneo.get(s.tournamentId) ?? [];
+    arr.push(s);
+    salasPorTorneo.set(s.tournamentId, arr);
+  }
+
   return mios.map((t) => {
     const nombres = nombrePorTorneoUsuario.get(t.id) ?? new Map<string, string>();
     const nombreDe = (uid: string | null) =>
@@ -330,6 +343,7 @@ export async function getTournamentsForUser(userId: string): Promise<Torneo[]> {
         .sort((a, b) => a.seed - b.seed)
         .map((j) => ({ userId: j.userId, nombre: j.nombre })),
       rondas,
+      salas: salasPorTorneo.get(t.id) ?? [],
     };
   });
 }

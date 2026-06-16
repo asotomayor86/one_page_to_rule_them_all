@@ -155,6 +155,18 @@ export async function getRoomsForUser(userId: string): Promise<Sala[]> {
   return montarSalas(propias);
 }
 
+/** Salas ABIERTAS (partidos pendientes) de los torneos indicados. */
+export async function getSalasDeTorneos(ids: string[]): Promise<Sala[]> {
+  if (ids.length === 0) return [];
+  const filas = await db
+    .select(seleccionSala)
+    .from(rooms)
+    .innerJoin(games, eq(games.id, rooms.gameId))
+    .where(and(inArray(rooms.tournamentId, ids), eq(rooms.status, "open")))
+    .orderBy(desc(rooms.createdAt));
+  return montarSalas(filas);
+}
+
 export type FilaClasificacion = {
   userId: string;
   nombre: string;
