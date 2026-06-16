@@ -271,6 +271,21 @@ export async function guardarJuego(
   return { ok: true, mensaje: id ? "Juego actualizado" : "Juego creado" };
 }
 
+/**
+ * Elimina un juego del catálogo. Por las FK con ON DELETE CASCADE, también
+ * desaparecen sus permisos (user_games), sus ligas, sus salas y su historial de
+ * partidas (matches + match_participants). Operación destructiva: la UI confirma.
+ */
+export async function eliminarJuego(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await db.delete(games).where(eq(games.id, id));
+  revalidatePath("/admin/juegos");
+  revalidatePath("/hub");
+  revalidatePath("/estadisticas");
+}
+
 // --- Registrar partida manualmente ------------------------------------------
 
 const esquemaParticipante = z.object({
