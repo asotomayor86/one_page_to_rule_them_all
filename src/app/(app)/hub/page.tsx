@@ -101,52 +101,58 @@ export default async function HubPage() {
         </Link>
       </Card>
 
-      {/* 3) Juegos disponibles */}
-      <SeccionTitulo>Juegos disponibles</SeccionTitulo>
-      {juegos.length === 0 ? (
-        <Card>
-          <p style={{ margin: 0, color: "var(--texto-suave)" }}>
-            Todavía no hay juegos disponibles. Un administrador puede darlos de
-            alta desde el panel de administración.
-          </p>
-        </Card>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gap: "0.9rem",
-            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-          }}
-        >
-          {juegos.map((juego) => (
-            <Card
-              key={juego.id}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.6rem",
-              }}
-            >
-              <div style={{ fontSize: "2rem", lineHeight: 1 }}>
-                {juego.icon || "🎮"}
-              </div>
-              <div style={{ fontWeight: 700 }}>{juego.name}</div>
-              {juego.description && (
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.85rem",
-                    color: "var(--texto-suave)",
-                    flex: 1,
-                  }}
-                >
-                  {juego.description}
-                </p>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* 3) Juegos disponibles (plegado por defecto) */}
+      <LeagueSection
+        name="Juegos disponibles"
+        icon="🎮"
+        defaultOpen={false}
+        subtitle={`${juegos.length}`}
+      >
+        {juegos.length === 0 ? (
+          <Card>
+            <p style={{ margin: 0, color: "var(--texto-suave)" }}>
+              Todavía no hay juegos disponibles. Un administrador puede darlos de
+              alta desde el panel de administración.
+            </p>
+          </Card>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gap: "0.9rem",
+              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+            }}
+          >
+            {juegos.map((juego) => (
+              <Card
+                key={juego.id}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6rem",
+                }}
+              >
+                <div style={{ fontSize: "2rem", lineHeight: 1 }}>
+                  {juego.icon || "🎮"}
+                </div>
+                <div style={{ fontWeight: 700 }}>{juego.name}</div>
+                {juego.description && (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "0.85rem",
+                      color: "var(--texto-suave)",
+                      flex: 1,
+                    }}
+                  >
+                    {juego.description}
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </LeagueSection>
     </>
   );
 }

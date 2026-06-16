@@ -56,27 +56,18 @@ export function RoomCard({
         {(sala.game.icon || "🎮") + " " + sala.game.name}
       </div>
 
-      {/* 3) Código */}
-      <div
-        style={{
-          fontSize: "0.78rem",
-          color: "var(--texto-suave)",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.4rem",
-        }}
-      >
-        Código
+      {/* 3) Código (sin etiqueta, fuente pequeña) */}
+      <div>
         <span
           style={{
             fontFamily: "monospace",
-            fontSize: "0.95rem",
-            letterSpacing: "0.12em",
+            fontSize: "0.62rem",
+            letterSpacing: "0.1em",
             color: jugada ? "var(--texto-suave)" : "var(--texto)",
             background: "var(--superficie-2)",
             border: "1px solid var(--borde)",
-            borderRadius: 7,
-            padding: "0.05rem 0.5rem",
+            borderRadius: 6,
+            padding: "0.02rem 0.4rem",
           }}
         >
           {sala.code}
