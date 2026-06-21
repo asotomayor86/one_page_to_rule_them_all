@@ -31,6 +31,13 @@ const nextConfig: NextConfig = {
           source: "/murciakingdom/:path*",
           destination: "https://murcia-kingdom.vercel.app/murciakingdom/:path*",
         },
+        // Ajedrez es Next.js con basePath="/ajedrez": CONSERVAMOS el prefijo en el
+        // destino (sus assets viven en /ajedrez/_next/...). Apunta a la URL canónica
+        // del proyecto chess en Vercel.
+        {
+          source: "/ajedrez/:path*",
+          destination: "https://chess-delta-brown.vercel.app/ajedrez/:path*",
+        },
       ],
       afterFiles: [],
       fallback: [],
