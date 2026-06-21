@@ -52,10 +52,14 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ code: string }> },
 ): Promise<NextResponse> {
-  // Autenticación servidor-a-servidor por secreto compartido.
-  const secret = process.env.HUB_RESULT_SECRET;
+  // Autenticación servidor-a-servidor por secreto compartido. Se aceptan dos
+  // valores para poder dar de alta un juego nuevo sin tener que rotar el secreto
+  // de todos los demás (p. ej. cuando el original quedó como "sensitive" en Vercel
+  // y ya no se puede leer): HUB_RESULT_SECRET (el de siempre) o HUB_RESULT_SECRET_2.
   const auth = request.headers.get("authorization") ?? "";
-  if (!secret || auth !== `Bearer ${secret}`) {
+  const secretos = [process.env.HUB_RESULT_SECRET, process.env.HUB_RESULT_SECRET_2];
+  const autorizado = secretos.some((s) => s && auth === `Bearer ${s}`);
+  if (!autorizado) {
     return NextResponse.json(
       { error: "No autorizado" },
       { status: 401, headers: CORS },
