@@ -160,6 +160,20 @@ export async function getRoomsForUser(userId: string): Promise<Sala[]> {
   return montarSalas(propias);
 }
 
+/**
+ * Nº de partidas pendientes del usuario: salas ABIERTAS en las que está como
+ * jugador (cubre salas sueltas, partidos de liga y cruces de torneo). Es la
+ * cuenta del aviso ("tienes novedades") de la barra de navegación.
+ */
+export async function contarSalasPendientes(userId: string): Promise<number> {
+  const filas = await db
+    .select({ id: rooms.id })
+    .from(rooms)
+    .innerJoin(roomPlayers, eq(roomPlayers.roomId, rooms.id))
+    .where(and(eq(roomPlayers.userId, userId), eq(rooms.status, "open")));
+  return filas.length;
+}
+
 /** Salas ABIERTAS (partidos pendientes) de los torneos indicados. */
 export async function getSalasDeTorneos(ids: string[]): Promise<Sala[]> {
   if (ids.length === 0) return [];

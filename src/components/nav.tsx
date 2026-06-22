@@ -8,6 +8,7 @@ import { authClient } from "@/auth/client";
 type Props = {
   displayName: string;
   isAdmin: boolean;
+  pendientes?: number;
 };
 
 const enlaces = [
@@ -25,7 +26,7 @@ const enlaces = [
  *  - Móvil (≤720px): solo logo y botón hamburguesa; al abrir despliega un panel
  *    con los enlaces apilados y el botón "Salir". El CSS está en globals.css.
  */
-export function Nav({ displayName, isAdmin }: Props) {
+export function Nav({ displayName, isAdmin, pendientes = 0 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -81,15 +82,41 @@ export function Nav({ displayName, isAdmin }: Props) {
             color: "inherit",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/icon.svg"
-            alt=""
-            aria-hidden="true"
-            width={28}
-            height={28}
-            style={{ display: "block", borderRadius: 6 }}
-          />
+          <span style={{ position: "relative", display: "inline-flex" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon.svg"
+              alt=""
+              aria-hidden="true"
+              width={28}
+              height={28}
+              style={{ display: "block", borderRadius: 6 }}
+            />
+            {pendientes > 0 && (
+              <span
+                aria-label={`${pendientes} partidas pendientes`}
+                title={`Tienes ${pendientes} partida(s) pendiente(s)`}
+                style={{
+                  position: "absolute",
+                  top: -6,
+                  right: -7,
+                  minWidth: 17,
+                  height: 17,
+                  padding: "0 4px",
+                  borderRadius: 999,
+                  background: "var(--rojo)",
+                  color: "white",
+                  fontSize: "0.66rem",
+                  fontWeight: 700,
+                  lineHeight: "17px",
+                  textAlign: "center",
+                  boxShadow: "0 0 0 2px var(--fondo)",
+                }}
+              >
+                {pendientes > 9 ? "9+" : pendientes}
+              </span>
+            )}
+          </span>
           GameHub
         </Link>
 
