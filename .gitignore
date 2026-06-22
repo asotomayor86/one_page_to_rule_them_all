@@ -33,3 +33,6 @@ yarn-error.log*
 # secretos temporales locales
 *.tmp
 .hub_result_secret*
+
+# Build artifact de TypeScript
+tsconfig.tsbuildinfo
