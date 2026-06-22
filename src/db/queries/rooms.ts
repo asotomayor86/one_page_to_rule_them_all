@@ -65,7 +65,12 @@ async function montarSalas(
     })
     .from(roomPlayers)
     .innerJoin(profiles, eq(profiles.id, roomPlayers.userId))
-    .where(inArray(roomPlayers.roomId, ids));
+    .where(inArray(roomPlayers.roomId, ids))
+    // Orden estable: sin ORDER BY, Postgres puede devolver los jugadores en
+    // distinto orden entre peticiones, y los juegos que asignan asiento por la
+    // posición en la lista (p. ej. ajedrez, murcia) se romperían de forma
+    // intermitente (los dos jugadores creyéndose el mismo asiento).
+    .orderBy(roomPlayers.userId);
 
   const porSala = new Map<string, SalaJugador[]>();
   for (const j of jugadores) {
