@@ -42,6 +42,14 @@ const nextConfig: NextConfig = {
           source: "/ajedrez/:path*",
           destination: "https://chess-delta-brown.vercel.app/ajedrez/:path*",
         },
+        // Polysotopia es Next.js con basePath="/polysotopia": CONSERVAMOS el prefijo
+        // en el destino (sus assets viven en /polysotopia/_next/...). Apunta a la URL
+        // pública del proyecto en Vercel (el dominio limpio, que no está tras la
+        // Protección de Vercel).
+        {
+          source: "/polysotopia/:path*",
+          destination: "https://polysotopia.vercel.app/polysotopia/:path*",
+        },
       ],
       afterFiles: [],
       fallback: [],
