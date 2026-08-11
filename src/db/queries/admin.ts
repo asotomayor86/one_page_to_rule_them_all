@@ -12,24 +12,32 @@ export type UsuarioAdmin = {
   gameIds: string[];
 };
 
+export type ResultadoUsuarios = {
+  usuarios: UsuarioAdmin[];
+  // Mensaje para mostrar con <Aviso tipo="error"> si algo falló, sin tirar
+  // abajo la página entera (antes se lanzaba un throw aquí; mejor devolver el
+  // fallo como dato y dejar que la página decida cómo mostrarlo).
+  error: string | null;
+};
+
 /**
  * Lista de usuarios para el panel: combina los usuarios de Neon Auth (para el
  * email) con nuestra tabla `profiles` (nombre, apodo, admin) y sus permisos.
  */
-export async function listarUsuarios(): Promise<UsuarioAdmin[]> {
+export async function listarUsuarios(): Promise<ResultadoUsuarios> {
   const { data, error } = await getAuth().admin.listUsers({ query: { limit: 500 } });
   if (error) {
-    // Antes esto se tragaba el error y la página se quedaba en "Usuarios (0)"
-    // sin ninguna pista de qué había pasado. La causa típica: el rol `admin`
-    // de Neon Auth de tu sesión (distinto de `profiles.is_admin`) no está
-    // fijado o caducó — revisa la Consola de Neon → Auth → Users, o vuelve a
-    // iniciar sesión.
+    // Causa típica: el rol `admin` de Neon Auth de tu sesión (distinto de
+    // `profiles.is_admin`) no está fijado o caducó — revisa la Consola de
+    // Neon → Auth → Users, o vuelve a iniciar sesión.
     console.error("admin.listUsers falló:", error);
-    throw new Error(
-      `No se pudo listar los usuarios (Neon Auth): ${error.message ?? "sin detalle"}. ` +
+    return {
+      usuarios: [],
+      error:
+        `No se pudo listar los usuarios (Neon Auth): ${error.message ?? "sin detalle"}. ` +
         "Suele ser que tu sesión perdió el rol 'admin' de Neon Auth (distinto de profiles.is_admin) " +
         "— revisa la Consola de Neon → Auth → Users, o cierra sesión y vuelve a entrar.",
-    );
+    };
   }
   const authUsers = (data?.users ?? []) as Array<{
     id: string;
@@ -48,7 +56,7 @@ export async function listarUsuarios(): Promise<UsuarioAdmin[]> {
     juegosPorUsuario.set(up.userId, arr);
   }
 
-  return authUsers
+  const usuarios = authUsers
     .map((u) => {
       const p = perfilPorId.get(u.id);
       return {
@@ -61,6 +69,8 @@ export async function listarUsuarios(): Promise<UsuarioAdmin[]> {
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "es"));
+
+  return { usuarios, error: null };
 }
 
 /** Perfiles simples (id + nombre) para selectores, p. ej. registrar partida. */

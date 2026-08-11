@@ -4,12 +4,12 @@ import { listarUsuarios } from "@/db/queries/admin";
 import { getAllGames } from "@/db/queries/games";
 import { InviteForm } from "@/components/invite-form";
 import { DeleteUserButton } from "@/components/delete-user-button";
-import { Card, SeccionTitulo } from "@/components/ui";
+import { Aviso, Card, SeccionTitulo } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function UsuariosPage() {
-  const [usuarios, juegos, actual] = await Promise.all([
+  const [{ usuarios, error }, juegos, actual] = await Promise.all([
     listarUsuarios(),
     getAllGames(),
     getCurrentUser(),
@@ -23,6 +23,7 @@ export default async function UsuariosPage() {
       </Card>
 
       <SeccionTitulo>Usuarios ({usuarios.length})</SeccionTitulo>
+      {error && <Aviso tipo="error">{error}</Aviso>}
       <div style={{ display: "grid", gap: "0.9rem" }}>
         {usuarios.map((u) => (
           <Card
