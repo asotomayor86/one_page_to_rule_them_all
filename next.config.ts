@@ -50,6 +50,13 @@ const nextConfig: NextConfig = {
           source: "/polysotopia/:path*",
           destination: "https://polysotopia.vercel.app/polysotopia/:path*",
         },
+        // Marvel Trivia es Next.js con basePath="/marvel_trivia": CONSERVAMOS el
+        // prefijo en el destino (sus assets viven en /marvel_trivia/_next/...).
+        // Apunta al dominio limpio del proyecto en Vercel.
+        {
+          source: "/marvel_trivia/:path*",
+          destination: "https://marvel-trivia.vercel.app/marvel_trivia/:path*",
+        },
       ],
       afterFiles: [],
       fallback: [],
