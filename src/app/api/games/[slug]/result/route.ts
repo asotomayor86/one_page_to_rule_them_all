@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, games, matchParticipants, matches } from "@/db";
+import { autorizadoServidorAServidor } from "@/lib/game-auth";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -33,12 +34,6 @@ const esquema = z.object({
     .min(1),
 });
 
-function autorizado(request: Request): boolean {
-  const auth = request.headers.get("authorization") ?? "";
-  const secretos = [process.env.HUB_RESULT_SECRET, process.env.HUB_RESULT_SECRET_2];
-  return secretos.some((s) => s && auth === `Bearer ${s}`);
-}
-
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS });
 }
@@ -47,7 +42,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ): Promise<NextResponse> {
-  if (!autorizado(request)) {
+  if (!autorizadoServidorAServidor(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401, headers: CORS });
   }
 

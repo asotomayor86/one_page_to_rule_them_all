@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db, games, matches } from "@/db";
+import { autorizadoServidorAServidor } from "@/lib/game-auth";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -15,12 +16,6 @@ const CORS: Record<string, string> = {
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
   "Cache-Control": "no-store",
 };
-
-function autorizado(request: Request): boolean {
-  const auth = request.headers.get("authorization") ?? "";
-  const secretos = [process.env.HUB_RESULT_SECRET, process.env.HUB_RESULT_SECRET_2];
-  return secretos.some((s) => s && auth === `Bearer ${s}`);
-}
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS });
@@ -30,7 +25,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ slug: string; matchId: string }> },
 ): Promise<NextResponse> {
-  if (!autorizado(request)) {
+  if (!autorizadoServidorAServidor(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401, headers: CORS });
   }
 
