@@ -1,0 +1,1 @@
+ALTER TABLE "games" ADD COLUMN "tracks_win_loss" boolean DEFAULT true NOT NULL;

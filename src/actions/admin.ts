@@ -226,6 +226,9 @@ const esquemaJuego = z.object({
     .optional()
     .transform((v) => (v ? v : null)),
   active: z.coerce.boolean(),
+  // Cuenta victorias/derrotas/partidas jugadas en el ranking. Se desmarca para
+  // juegos de puntuación (p. ej. Marvel Trivia): solo suman "Puntos".
+  tracksWinLoss: z.coerce.boolean(),
   // Máx. jugadores: vacío = sin límite; si se indica, entre 2 y 64.
   maxPlayers: z.preprocess(
     (v) => (v === "" || v == null ? null : v),
@@ -253,6 +256,8 @@ export async function guardarJuego(
     url: formData.get("url"),
     icon: formData.get("icon"),
     active: formData.get("active") === "on" || formData.get("active") === "true",
+    tracksWinLoss:
+      formData.get("tracksWinLoss") === "on" || formData.get("tracksWinLoss") === "true",
     maxPlayers: formData.get("maxPlayers"),
   });
   if (!parsed.success) {
@@ -375,6 +380,16 @@ export async function registrarPartida(
 // --- Eliminar partida --------------------------------------------------------
 
 /**
+ * Juegos individuales (sin sala) que guardan su propio estado del intento
+ * (p. ej. "ya jugaste esta película, no puedes repetir") y necesitan enterarse
+ * cuando un admin borra su partida aquí, para liberar el reintento. No hay
+ * panel de admin dentro de esos juegos — el admin vive solo en el hub — así
+ * que el hub avisa al juego con el mismo secreto que usa el juego para
+ * mandar/borrar resultados (HUB_RESULT_SECRET_3, ver .env de este proyecto).
+ */
+const JUEGOS_CON_CALLBACK_DE_BORRADO = new Set(["marvel-trivia"]);
+
+/**
  * Elimina una partida del historial (y, en cascada, sus participantes). Al
  * borrar la fila de `matches`, el ranking deja de contarla automáticamente —
  * `ranking()` agrega sobre `match_participants` y FK con ON DELETE CASCADE
@@ -384,7 +399,40 @@ export async function eliminarPartida(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = String(formData.get("matchId") ?? "");
   if (!id) return;
+
+  const [partida] = await db
+    .select({ slug: games.slug, url: games.url })
+    .from(matches)
+    .innerJoin(games, eq(games.id, matches.gameId))
+    .where(eq(matches.id, id))
+    .limit(1);
+
   await db.delete(matches).where(eq(matches.id, id));
+
+  if (partida && JUEGOS_CON_CALLBACK_DE_BORRADO.has(partida.slug)) {
+    const secreto = process.env.HUB_RESULT_SECRET_3;
+    if (!secreto) {
+      console.error(
+        `Falta HUB_RESULT_SECRET_3: no se pudo avisar a ${partida.slug} del borrado de ${id}`,
+      );
+    } else {
+      try {
+        const base = partida.url.replace(/\/+$/, "");
+        const res = await fetch(`${base}/api/attempts/by-match/${id}/`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${secreto}` },
+        });
+        if (!res.ok && res.status !== 404) {
+          console.error(
+            `${partida.slug} rechazó el borrado del intento de ${id}: ${res.status}`,
+          );
+        }
+      } catch (e) {
+        console.error(`No se pudo avisar a ${partida.slug} del borrado de ${id}:`, e);
+      }
+    }
+  }
+
   revalidatePath("/estadisticas");
   revalidatePath("/admin/partidas");
 }

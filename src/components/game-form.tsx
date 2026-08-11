@@ -95,6 +95,25 @@ export function GameForm({ juego }: { juego?: Game }) {
         />
         Activo (visible en el hub)
       </label>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          fontSize: "0.9rem",
+        }}
+      >
+        <input
+          type="checkbox"
+          name="tracksWinLoss"
+          defaultChecked={juego?.tracksWinLoss ?? true}
+        />
+        Cuenta victorias/derrotas en el ranking
+        <span style={{ color: "var(--texto-suave)", fontSize: "0.8rem" }}>
+          (desmárcalo para juegos de puntuación, p. ej. trivia — solo sumarán
+          Puntos)
+        </span>
+      </label>
       <button
         type="submit"
         disabled={enviando}

@@ -15,9 +15,10 @@ const columnas: { key: Columna; label: string }[] = [
   { key: "empates", label: "E" },
   { key: "porcentajeVictoria", label: "% Vic." },
   // Suma de `score` — solo es != 0 en juegos que registran puntuación
-  // numérica (p. ej. Marvel Trivia). Ordenable como el resto de columnas: es
-  // el criterio real de "quién tiene más aciertos" para esos juegos.
-  { key: "puntos", label: "Pts" },
+  // numérica. Por ahora el único es Marvel Trivia, de ahí la etiqueta; si en
+  // el futuro hay más juegos de puntuación, conviene volver a un "Pts"
+  // genérico (o una columna por juego).
+  { key: "puntos", label: "Marvel Trivia" },
 ];
 
 /** Tabla de ranking ordenable (clic en cabeceras). El líder se destaca. */

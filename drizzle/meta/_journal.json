@@ -64,6 +64,13 @@
       "when": 1781645620808,
       "tag": "0008_slimy_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786470919542,
+      "tag": "0009_purple_professor_monster",
+      "breakpoints": true
     }
   ]
 }

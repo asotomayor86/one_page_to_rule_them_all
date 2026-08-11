@@ -37,15 +37,18 @@ export async function ranking(
       userId: profiles.id,
       displayName: profiles.displayName,
       nickname: profiles.nickname,
-      jugadas: sql<number>`count(*)`,
-      victorias: sql<number>`count(*) filter (where ${matchParticipants.result} = 'win')`,
-      derrotas: sql<number>`count(*) filter (where ${matchParticipants.result} = 'loss')`,
-      empates: sql<number>`count(*) filter (where ${matchParticipants.result} = 'draw')`,
+      // "filter (where games.tracks_win_loss)" además del resultado: los
+      // juegos de puntuación (Marvel Trivia) no cuentan aquí, solo en puntos.
+      jugadas: sql<number>`count(*) filter (where ${games.tracksWinLoss})`,
+      victorias: sql<number>`count(*) filter (where ${games.tracksWinLoss} and ${matchParticipants.result} = 'win')`,
+      derrotas: sql<number>`count(*) filter (where ${games.tracksWinLoss} and ${matchParticipants.result} = 'loss')`,
+      empates: sql<number>`count(*) filter (where ${games.tracksWinLoss} and ${matchParticipants.result} = 'draw')`,
       puntos: sql<number>`coalesce(sum(${matchParticipants.score}), 0)`,
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matches.id, matchParticipants.matchId))
     .innerJoin(profiles, eq(profiles.id, matchParticipants.userId))
+    .innerJoin(games, eq(games.id, matches.gameId))
     .where(
       gameId
         ? and(eq(matches.kind, kind), eq(matches.gameId, gameId))
@@ -140,6 +143,7 @@ export type PartidaHistorial = {
   id: string;
   gameName: string;
   gameIcon: string | null;
+  gameSlug: string;
   kind: MatchKind;
   playedAt: Date;
   participantes: {
@@ -158,6 +162,7 @@ export async function historial(limite = 20): Promise<PartidaHistorial[]> {
       playedAt: matches.playedAt,
       gameName: games.name,
       gameIcon: games.icon,
+      gameSlug: games.slug,
     })
     .from(matches)
     .innerJoin(games, eq(games.id, matches.gameId))
@@ -194,6 +199,7 @@ export async function historial(limite = 20): Promise<PartidaHistorial[]> {
     id: c.id,
     gameName: c.gameName,
     gameIcon: c.gameIcon,
+    gameSlug: c.gameSlug,
     kind: c.kind,
     playedAt: c.playedAt,
     participantes: porPartida.get(c.id) ?? [],

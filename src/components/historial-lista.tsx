@@ -8,6 +8,17 @@ const etiquetaResultado: Record<string, { texto: string; color: string }> = {
   draw: { texto: "Empató", color: "var(--oro)" },
 };
 
+// Juegos de puntuación (sin ganar/perder real) con su propia etiqueta —
+// win/loss se sigue guardando internamente (p. ej. ≥6/10 en Marvel Trivia),
+// pero aquí no se trata de "ganar": se informa cuántas acertó, punto.
+const etiquetaPorJuego: Record<string, { texto: string; color: string }> = {
+  "marvel-trivia": { texto: "Acertó", color: "var(--verde)" },
+};
+
+function etiquetaDe(gameSlug: string, result: string) {
+  return etiquetaPorJuego[gameSlug] ?? etiquetaResultado[result];
+}
+
 function formatearFecha(fecha: Date): string {
   return new Intl.DateTimeFormat("es-ES", {
     day: "2-digit",
@@ -84,7 +95,7 @@ export function HistorialLista({
             }}
           >
             {p.participantes.map((part, i) => {
-              const e = etiquetaResultado[part.result];
+              const e = etiquetaDe(p.gameSlug, part.result);
               return (
                 <span key={i} style={{ whiteSpace: "nowrap" }}>
                   {i > 0 && (
@@ -108,7 +119,7 @@ export function HistorialLista({
             <DeleteMatchButton
               matchId={p.id}
               resumen={`${p.gameName} · ${formatearFecha(p.playedAt)} · ${p.participantes
-                .map((pa) => `${pa.nombre} ${etiquetaResultado[pa.result].texto}`)
+                .map((pa) => `${pa.nombre} ${etiquetaDe(p.gameSlug, pa.result).texto}`)
                 .join(" / ")}`}
             />
           )}

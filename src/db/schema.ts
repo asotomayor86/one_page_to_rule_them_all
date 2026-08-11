@@ -102,6 +102,11 @@ export const games = pgTable(
     // Máximo de jugadores que admite el juego. null = sin límite. Se usa para
     // impedir crear salas con más jugadores de los que soporta el juego.
     maxPlayers: integer("max_players"),
+    // Si cuenta victorias/derrotas/empates y partidas jugadas en el ranking.
+    // Para juegos de puntuación (p. ej. Marvel Trivia) se desmarca: solo
+    // suman "Puntos" (sum(score)), no distorsionan el % de victorias de
+    // juegos por turnos con los que no tiene sentido compararlos.
+    tracksWinLoss: boolean("tracks_win_loss").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
