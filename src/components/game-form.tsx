@@ -29,9 +29,9 @@ export function GameForm({ juego }: { juego?: Game }) {
         <input
           name="slug"
           required
-          placeholder="slug (ej: parchis)"
+          placeholder="slug (se normaliza solo, ej: Marvel Trivia → marvel-trivia)"
           defaultValue={juego?.slug ?? ""}
-          maxLength={40}
+          maxLength={60}
           style={{ ...estiloCampo, flex: "1 1 120px" }}
         />
         <input

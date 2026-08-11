@@ -194,13 +194,23 @@ export async function alternarPermiso(formData: FormData): Promise<void> {
 
 const esquemaJuego = z.object({
   id: z.string().uuid().optional(),
+  // Antes rechazaba cualquier cosa que no fueran ya minúsculas/números/guiones
+  // ("Solo minúsculas, números y guiones"), lo cual era muy fácil de disparar
+  // sin querer (mayúsculas, espacios, acentos...). Ahora, en vez de rechazar,
+  // lo normaliza: minúsculas, sin acentos, cualquier tramo de caracteres raros
+  // se convierte en un guion. "Marvel Trivia" → "marvel-trivia".
   slug: z
     .string()
     .trim()
-    .toLowerCase()
-    .min(2, "El slug es obligatorio")
-    .max(40)
-    .regex(/^[a-z0-9-]+$/, "Solo minúsculas, números y guiones"),
+    .transform((v) =>
+      v
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(new RegExp("[\\u0300-\\u036f]", "g"), "") // quita los acentos (tras NFD quedan sueltos)
+        .replace(/[^a-z0-9]+/g, "-") // cualquier tramo no válido -> un guion
+        .replace(/^-+|-+$/g, ""), // sin guiones sobrantes al principio/final
+    )
+    .pipe(z.string().min(2, "El slug es obligatorio").max(40)),
   name: z.string().trim().min(2, "El nombre es obligatorio").max(60),
   description: z
     .string()
