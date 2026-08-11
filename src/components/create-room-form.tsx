@@ -10,6 +10,7 @@ type Juego = {
   icon: string | null;
   url: string;
   maxPlayers: number | null;
+  tracksWinLoss: boolean;
 };
 type Perfil = { id: string; nombre: string };
 
@@ -94,23 +95,28 @@ export function CreateRoomForm({
             ))}
           </select>
         </label>
-        <label
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-            flex: "0 1 160px",
-          }}
-        >
-          <span style={{ fontSize: "0.9rem" }}>Victorias por partido</span>
-          <select name="victorias" defaultValue={1} style={estiloCampo}>
-            <option value={1}>A 1 victoria</option>
-            <option value={2}>A 2 victorias</option>
-            <option value={3}>A 3 victorias</option>
-            <option value={4}>A 4 victorias</option>
-            <option value={5}>A 5 victorias</option>
-          </select>
-        </label>
+        {/* Juegos sin victorias/derrotas (p. ej. Marvel Trivia) no se juegan
+            "a N victorias" — no tiene sentido pedirlo. Antes de elegir juego
+            se muestra igual (por defecto, `tracksWinLoss` no se sabe aún). */}
+        {(!juego || juego.tracksWinLoss) && (
+          <label
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              flex: "0 1 160px",
+            }}
+          >
+            <span style={{ fontSize: "0.9rem" }}>Victorias por partido</span>
+            <select name="victorias" defaultValue={1} style={estiloCampo}>
+              <option value={1}>A 1 victoria</option>
+              <option value={2}>A 2 victorias</option>
+              <option value={3}>A 3 victorias</option>
+              <option value={4}>A 4 victorias</option>
+              <option value={5}>A 5 victorias</option>
+            </select>
+          </label>
+        )}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

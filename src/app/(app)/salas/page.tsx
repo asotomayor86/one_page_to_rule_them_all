@@ -38,6 +38,7 @@ export default async function SalasPage() {
               icon: j.icon,
               url: j.url,
               maxPlayers: j.maxPlayers,
+              tracksWinLoss: j.tracksWinLoss,
             }))}
             perfiles={perfiles.map((p) => ({
               id: p.id,
