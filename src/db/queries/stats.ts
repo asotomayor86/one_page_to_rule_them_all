@@ -17,6 +17,11 @@ export type FilaRanking = {
   derrotas: number;
   empates: number;
   porcentajeVictoria: number; // 0..100
+  // Suma de `score` (p. ej. aciertos de trivia) — juegos sin puntuación
+  // numérica (la mayoría, por turnos) se quedan a 0. Pensado para juegos
+  // individuales tipo Marvel Trivia, donde lo relevante es sumar puntos, no
+  // victorias/derrotas.
+  puntos: number;
 };
 
 /**
@@ -36,6 +41,7 @@ export async function ranking(
       victorias: sql<number>`count(*) filter (where ${matchParticipants.result} = 'win')`,
       derrotas: sql<number>`count(*) filter (where ${matchParticipants.result} = 'loss')`,
       empates: sql<number>`count(*) filter (where ${matchParticipants.result} = 'draw')`,
+      puntos: sql<number>`coalesce(sum(${matchParticipants.score}), 0)`,
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matches.id, matchParticipants.matchId))
@@ -60,6 +66,7 @@ export async function ranking(
         empates: Number(f.empates),
         porcentajeVictoria:
           jugadas > 0 ? Math.round((victorias / jugadas) * 100) : 0,
+        puntos: Number(f.puntos),
       };
     })
     .sort(

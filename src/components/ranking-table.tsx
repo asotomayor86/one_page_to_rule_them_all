@@ -5,7 +5,7 @@ import type { FilaRanking } from "@/db/queries/stats";
 
 type Columna = keyof Pick<
   FilaRanking,
-  "jugadas" | "victorias" | "derrotas" | "empates" | "porcentajeVictoria"
+  "jugadas" | "victorias" | "derrotas" | "empates" | "porcentajeVictoria" | "puntos"
 >;
 
 const columnas: { key: Columna; label: string }[] = [
@@ -14,6 +14,10 @@ const columnas: { key: Columna; label: string }[] = [
   { key: "derrotas", label: "D" },
   { key: "empates", label: "E" },
   { key: "porcentajeVictoria", label: "% Vic." },
+  // Suma de `score` — solo es != 0 en juegos que registran puntuación
+  // numérica (p. ej. Marvel Trivia). Ordenable como el resto de columnas: es
+  // el criterio real de "quién tiene más aciertos" para esos juegos.
+  { key: "puntos", label: "Pts" },
 ];
 
 /** Tabla de ranking ordenable (clic en cabeceras). El líder se destaca. */
@@ -103,6 +107,9 @@ export function RankingTable({ filas }: { filas: FilaRanking[] }) {
               <td style={{ ...tdStyle, color: "var(--oro)" }}>{f.empates}</td>
               <td style={{ ...tdStyle, fontWeight: 600 }}>
                 {f.porcentajeVictoria}%
+              </td>
+              <td style={{ ...tdStyle, fontWeight: 600, color: "var(--oro)" }}>
+                {f.puntos}
               </td>
             </tr>
           ))}
